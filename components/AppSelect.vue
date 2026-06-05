@@ -1,0 +1,222 @@
+<script setup lang="ts">
+import { useId } from 'vue'
+
+interface SelectOption {
+  label: string
+  value: string
+}
+
+interface Props {
+  modelValue: string | number | null
+  label?: string
+  id?: string
+  options: SelectOption[]
+  placeholder?: string
+  translateOptions?: boolean
+  searchable?: boolean
+  required?: boolean
+  disabled?: boolean
+  invalid?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  label: '',
+  id: '',
+  placeholder: 'Select an option',
+  translateOptions: true,
+  searchable: false,
+  required: false,
+  disabled: false,
+  invalid: false
+})
+
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+}>()
+
+const generatedId = useId()
+const { t } = useUiLocale()
+const selectId = computed(() => props.id || `select-${generatedId}`)
+const wrapperRef = ref<HTMLElement | null>(null)
+const dropdownOpen = ref(false)
+const displayOptions = computed(() =>
+  props.options.map((option) => ({
+    ...option,
+    label: props.translateOptions ? t(option.label) : option.label
+  }))
+)
+const normalizedModelValue = computed(() => String(props.modelValue ?? ''))
+const selectedOption = computed(() => displayOptions.value.find((option) => option.value === normalizedModelValue.value) ?? null)
+const filteredOptions = computed(() => {
+  if (!props.searchable) {
+    return displayOptions.value
+  }
+
+  const query = normalizedModelValue.value.trim().toLowerCase()
+
+  if (!query) {
+    return displayOptions.value
+  }
+
+  return displayOptions.value.filter((option) => {
+    const label = option.label.toLowerCase()
+    const value = option.value.toLowerCase()
+    return label.includes(query) || value.includes(query)
+  })
+})
+
+const onSearchInput = (event: Event) => {
+  dropdownOpen.value = true
+  emit('update:modelValue', (event.target as HTMLInputElement).value)
+}
+
+const openDropdown = () => {
+  if (props.disabled) {
+    return
+  }
+
+  dropdownOpen.value = true
+}
+
+const closeDropdown = () => {
+  dropdownOpen.value = false
+}
+
+const toggleDropdown = () => {
+  if (props.disabled) {
+    return
+  }
+
+  dropdownOpen.value = !dropdownOpen.value
+}
+
+const handleEscape = () => {
+  closeDropdown()
+}
+
+const selectOption = (value: string) => {
+  emit('update:modelValue', value)
+  closeDropdown()
+}
+
+const handleDocumentClick = (event: MouseEvent) => {
+  if (!wrapperRef.value) {
+    return
+  }
+
+  const target = event.target
+
+  if (!(target instanceof Node)) {
+    return
+  }
+
+  if (!wrapperRef.value.contains(target)) {
+    closeDropdown()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleDocumentClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleDocumentClick)
+})
+
+const selectClasses = computed(() => [
+  'w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 outline-none transition',
+  props.invalid
+    ? 'border-rose-400 bg-rose-50 ring-rose-200 focus:border-rose-500 focus:ring'
+    : 'border-slate-300 ring-brand-300 focus:border-brand-500 focus:ring'
+])
+</script>
+
+<template>
+  <div class="space-y-1.5">
+    <label v-if="label" :for="selectId" class="text-sm font-medium text-slate-700">
+      {{ t(label) }}
+    </label>
+
+    <div ref="wrapperRef" class="relative" @keydown.esc="handleEscape">
+      <div class="relative">
+        <input
+          v-if="searchable"
+          :id="selectId"
+          type="text"
+          :value="modelValue ?? ''"
+          :required="required"
+          :disabled="disabled"
+          :placeholder="t(placeholder)"
+          autocomplete="off"
+          :class="[...selectClasses, 'pr-11 placeholder:text-slate-400']"
+          @focus="openDropdown"
+          @input="onSearchInput"
+        >
+        <button
+          v-else
+          :id="selectId"
+          type="button"
+          :disabled="disabled"
+          :class="[...selectClasses, 'flex items-center justify-between pr-11 text-left']"
+          @click="toggleDropdown"
+        >
+          <span :class="selectedOption ? 'text-slate-900' : 'text-slate-400'">
+            {{ selectedOption?.label || t(placeholder) }}
+          </span>
+        </button>
+        <button
+          type="button"
+          class="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-500 transition hover:text-slate-700"
+          :disabled="disabled"
+          @click="toggleDropdown"
+        >
+          <svg
+            class="h-4 w-4 transition"
+            :class="dropdownOpen ? 'rotate-180' : ''"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div
+        v-if="dropdownOpen"
+        class="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl"
+      >
+        <button
+          v-for="option in filteredOptions"
+          :key="option.value"
+          type="button"
+          class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+          @mousedown.prevent="selectOption(option.value)"
+        >
+          <span>{{ option.label }}</span>
+          <svg
+            v-if="option.value === modelValue"
+            class="h-4 w-4 text-brand-700"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.42l2.293 2.294 6.793-6.794a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </button>
+
+        <p v-if="!filteredOptions.length" class="px-3 py-2 text-sm text-slate-400">
+          {{ t('Natija topilmadi') }}
+        </p>
+      </div>
+    </div>
+  </div>
+</template>
