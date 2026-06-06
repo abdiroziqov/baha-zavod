@@ -90,8 +90,9 @@ const defaultCostProfile: CostProfile = {
 const KG_PER_TON = 1000
 const BAGS_PER_TON = 25
 const STONE_USAGE_PER_TON = 1
-const jsonBackupFilePath = process.env.ACCOUNTING_STATE_FILE || join(process.cwd(), 'data', 'storage', 'accounting-state.json')
-const sqliteStateFilePath = process.env.ACCOUNTING_DB_FILE || join(process.cwd(), 'data', 'storage', 'accounting-state.sqlite')
+const defaultStorageDir = process.env.VERCEL ? join(tmpdir(), 'baha-storage') : join(process.cwd(), 'data', 'storage')
+const jsonBackupFilePath = process.env.ACCOUNTING_STATE_FILE || join(defaultStorageDir, 'accounting-state.json')
+const sqliteStateFilePath = process.env.ACCOUNTING_DB_FILE || join(defaultStorageDir, 'accounting-state.sqlite')
 
 const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`
 const todayIso = () => new Date().toISOString().slice(0, 10)
@@ -528,14 +529,14 @@ export const normalizeAccountingState = (snapshot: unknown): AccountingStateSnap
 let writeChain = Promise.resolve()
 let sqliteReady = false
 
-const ensureStorageDir = async () => {
-  await mkdir(dirname(sqliteStateFilePath), { recursive: true })
+const ensureStorageDir = async (filePath: string) => {
+  await mkdir(dirname(filePath), { recursive: true })
 }
 
 const escapeSqlLiteral = (value: string) => value.replace(/'/g, "''")
 
 const runSqlite = async (sql: string) => {
-  await ensureStorageDir()
+  await ensureStorageDir(sqliteStateFilePath)
 
   const result = spawnSync('sqlite3', [sqliteStateFilePath], {
     input: sql,
@@ -593,22 +594,27 @@ const readJsonBackup = async () => {
 }
 
 const writeJsonBackup = async (snapshot: AccountingStateSnapshot) => {
-  await ensureStorageDir()
+  await ensureStorageDir(jsonBackupFilePath)
   const tempPath = `${jsonBackupFilePath}.tmp`
   await writeFile(tempPath, JSON.stringify(snapshot, null, 2), 'utf8')
   await rename(tempPath, jsonBackupFilePath)
 }
 
 const readSqliteState = async () => {
-  await ensureSqlite()
-  const stdout = await runSqlite("SELECT value FROM app_state WHERE key = 'latest' LIMIT 1;")
-  const serialized = stdout.trim()
+  try {
+    await ensureSqlite()
+    const stdout = await runSqlite("SELECT value FROM app_state WHERE key = 'latest' LIMIT 1;")
+    const serialized = stdout.trim()
 
-  if (!serialized) {
+    if (!serialized) {
+      return null
+    }
+
+    return normalizeAccountingState(JSON.parse(serialized))
+  } catch (error) {
+    console.warn('SQLite accounting state read failed, falling back to JSON storage.', error)
     return null
   }
-
-  return normalizeAccountingState(JSON.parse(serialized))
 }
 
 const writeSqliteState = async (snapshot: AccountingStateSnapshot) => {
@@ -656,7 +662,11 @@ export const readAccountingState = async () => {
   const jsonBackupState = await readJsonBackup()
 
   if (jsonBackupState) {
-    await writeSqliteState(jsonBackupState)
+    try {
+      await writeSqliteState(jsonBackupState)
+    } catch (error) {
+      console.warn('SQLite accounting state restore failed, keeping JSON storage active.', error)
+    }
     return jsonBackupState
   }
 
@@ -675,7 +685,12 @@ export const writeAccountingState = async (snapshot: unknown) => {
   writeChain = writeChain
     .catch(() => undefined)
     .then(async () => {
-      await writeSqliteState(normalizedState)
+      try {
+        await writeSqliteState(normalizedState)
+      } catch (error) {
+        console.warn('SQLite accounting state write failed, falling back to JSON storage.', error)
+      }
+
       await writeJsonBackup(normalizedState)
     })
 

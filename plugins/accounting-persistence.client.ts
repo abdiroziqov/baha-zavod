@@ -110,6 +110,31 @@ export default defineNuxtPlugin((nuxtApp) => {
       }
     }
 
+    const writeLocalSnapshot = (snapshot: AccountingStateSnapshot) => {
+      try {
+        window.localStorage.setItem(`${storagePrefix}default-costs`, JSON.stringify(snapshot.defaultCosts))
+        window.localStorage.setItem(`${storagePrefix}daily-records`, JSON.stringify(snapshot.dailyRecords))
+        window.localStorage.setItem(`${storagePrefix}incoming-loads`, JSON.stringify(snapshot.incomingLoads))
+        window.localStorage.setItem(`${storagePrefix}scale-entries`, JSON.stringify(snapshot.scaleEntries))
+        window.localStorage.setItem(`${storagePrefix}scale-sync-meta`, JSON.stringify(snapshot.scaleSyncMeta))
+        window.localStorage.setItem(`${storagePrefix}scale-cash-entries`, JSON.stringify(snapshot.scaleCashEntries))
+        window.localStorage.setItem(`${storagePrefix}sales`, JSON.stringify(snapshot.sales))
+        window.localStorage.setItem(`${storagePrefix}manual-debts`, JSON.stringify(snapshot.manualDebts))
+        window.localStorage.setItem(`${storagePrefix}payments`, JSON.stringify(snapshot.payments))
+        window.localStorage.setItem(`${storagePrefix}barter-records`, JSON.stringify(snapshot.barterRecords))
+        window.localStorage.setItem(`${storagePrefix}expenses`, JSON.stringify(snapshot.expenses))
+        window.localStorage.setItem(`${storagePrefix}contacts`, JSON.stringify(snapshot.contacts))
+        window.localStorage.setItem(`${storagePrefix}reminders`, JSON.stringify(snapshot.reminders))
+        window.localStorage.setItem(
+          `${storagePrefix}monthly-archive-records`,
+          JSON.stringify(snapshot.monthlyArchiveRecords)
+        )
+        window.localStorage.setItem(`${storagePrefix}audit-logs`, JSON.stringify(snapshot.auditLogs))
+      } catch (error) {
+        console.error('Local accounting state save failed', error)
+      }
+    }
+
     const saveSnapshot = async () => {
       if (!isAdmin.value) {
         return
@@ -121,6 +146,8 @@ export default defineNuxtPlugin((nuxtApp) => {
       if (serializedSnapshot === lastSerializedSnapshot) {
         return
       }
+
+      writeLocalSnapshot(snapshot)
 
       try {
         await $fetch('/api/accounting/state', {
@@ -153,16 +180,26 @@ export default defineNuxtPlugin((nuxtApp) => {
         const localSnapshot = readLocalSnapshot()
 
         if (localSnapshot && !hasServerContent(response.state) && isAdmin.value) {
-          const migratedResponse = await $fetch<{ state: AccountingStateSnapshot }>('/api/accounting/state', {
-            method: 'PUT',
-            body: localSnapshot
-          })
-          applySnapshot(migratedResponse.state)
+          try {
+            const migratedResponse = await $fetch<{ state: AccountingStateSnapshot }>('/api/accounting/state', {
+              method: 'PUT',
+              body: localSnapshot
+            })
+            applySnapshot(migratedResponse.state)
+          } catch (error) {
+            console.error('Accounting state migration failed, using local state', error)
+            applySnapshot(localSnapshot)
+          }
         } else {
           applySnapshot(response.state)
         }
       } catch (error) {
         console.error('Accounting state load failed', error)
+        const localSnapshot = readLocalSnapshot()
+
+        if (localSnapshot) {
+          applySnapshot(localSnapshot)
+        }
       } finally {
         syncReady = true
 
