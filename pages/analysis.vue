@@ -56,12 +56,6 @@ const taxExpense = computed(() => getExpenseTotal('Soliq'))
 const otherExpense = computed(() => getExpenseTotal('Boshqa'))
 const foodExpense = computed(() => getExpenseTotal('Ovqat'))
 const electricityExpense = computed(() => getExpenseTotal('Svet'))
-const creditExpense = computed(
-  () =>
-    getExpenseTotal('Sementovoz kredit') +
-    getExpenseTotal('Panel kredit') +
-    getExpenseTotal('Kobalt kredit')
-)
 const getFactoryAdvanceExpense = (factoryName: FactoryName) =>
   Number(
     summary.value.expenseRecords
@@ -182,11 +176,6 @@ const expenseCards = computed(() => [
     title: 'Pagruzka',
     value: formatSom(loadingExpense.value),
     subtitle: 'yuklash uchun'
-  },
-  {
-    title: 'Kreditga to`langan',
-    value: formatSom(creditExpense.value),
-    subtitle: 'sementovoz + panel + kobalt'
   },
   {
     title: 'Soliq',

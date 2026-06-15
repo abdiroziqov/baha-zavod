@@ -25,8 +25,7 @@ const {
   latestDate,
   addIncomingLoad,
   updateIncomingLoad,
-  removeIncomingLoad,
-  getSupplierProfile
+  removeIncomingLoad
 } = useFactoryAccounting()
 const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
@@ -66,8 +65,6 @@ const formError = ref('')
 const deleteDialogOpen = ref(false)
 const selectedLoad = ref<IncomingLoadRecord | null>(null)
 
-const supplierModalOpen = ref(false)
-const selectedSupplierName = ref('')
 const supplierSelectOptions = computed(() =>
   supplierContacts.value.map((contact) => ({
     label: contact.name,
@@ -85,17 +82,6 @@ const columns: TableColumn[] = [
   { key: 'totalAmount', label: 'Jami narx', align: 'right' },
   { key: 'balance', label: 'Balans', align: 'right' },
   { key: 'actions', label: 'Amal', align: 'right' }
-]
-
-const supplierLoadColumns: TableColumn[] = [
-  { key: 'date', label: 'Sana' },
-  { key: 'factory', label: 'Zavod' },
-  { key: 'vehicleType', label: 'Mashina' },
-  { key: 'tons', label: 'Tonna', align: 'right' },
-  { key: 'pricePerTon', label: 'Narx / tonna', align: 'right' },
-  { key: 'totalAmount', label: 'Jami narx', align: 'right' },
-  { key: 'paidAmount', label: 'To\`langan', align: 'right' },
-  { key: 'balance', label: 'Balans', align: 'right' }
 ]
 
 const filteredLoads = computed(() =>
@@ -190,23 +176,6 @@ watch(
   }
 )
 
-const supplierProfile = computed(() => getSupplierProfile(selectedSupplierName.value))
-const supplierSummary = computed(() => supplierProfile.value.summary)
-const supplierContact = computed(() => supplierProfile.value.contact)
-const supplierLoadRows = computed<Record<string, unknown>[]>(() =>
-  supplierProfile.value.recentLoads.map((record) => {
-    const advanceAmount = getLoadAdvanceAmount(record.totalAmount, record.paidAmount)
-    const balanceType: BalanceType = advanceAmount > 0 ? 'bizga_qarz' : record.remainingAmount > 0 ? 'bizdan_qarz' : 'yopilgan'
-
-    return {
-      ...record,
-      balance: advanceAmount > 0 ? advanceAmount : record.remainingAmount,
-      balanceType,
-      advanceAmount
-    }
-  })
-)
-
 const buildFilteredLoadSheets = () => {
   return [
     {
@@ -264,60 +233,6 @@ const exportFilteredLoadsExcel = () => {
 
 const exportFilteredLoadsPdf = () => {
   printWorkbook('Tosh kirimi', buildFilteredLoadSheets())
-}
-
-const buildSupplierSheets = () => {
-  if (!supplierSummary.value) {
-    return []
-  }
-
-  return [
-    {
-      name: 'Xulosa',
-      rows: [
-        { metric: "Ta'minotchi", value: supplierSummary.value.supplierName },
-        { metric: 'Jami tosh', value: Number(supplierSummary.value.totalTons.toFixed(2)) },
-        { metric: "O'rtacha narx / tonna", value: Math.round(supplierSummary.value.averagePricePerTon) },
-        { metric: 'Jami summa', value: Math.round(supplierSummary.value.totalAmount) },
-        { metric: "Jami to'langan", value: Math.round(supplierSummary.value.totalPaid) },
-        { metric: 'Biz qarzmiz', value: Math.round(supplierSummary.value.totalDebt) },
-        { metric: 'U qarz', value: Math.round(supplierSummary.value.totalAdvance) },
-        { metric: 'Balans turi', value: balanceLabel(supplierSummary.value.balanceType) },
-        { metric: 'Balans summa', value: Math.round(supplierSummary.value.balanceAmount) },
-        { metric: 'Telefon', value: supplierContact.value?.phone ?? '' },
-        { metric: 'Manzil', value: supplierContact.value?.address ?? '' }
-      ]
-    },
-    {
-      name: 'Yuklar',
-      columns: supplierLoadColumns,
-      rows: supplierProfile.value.recentLoads.map((record) => {
-        const advanceAmount = getLoadAdvanceAmount(record.totalAmount, record.paidAmount)
-        const balanceType: BalanceType = advanceAmount > 0 ? 'bizga_qarz' : record.remainingAmount > 0 ? 'bizdan_qarz' : 'yopilgan'
-
-        return {
-          date: formatDate(record.date),
-          factory: record.factory,
-          vehicleType: record.vehicleType,
-          tons: Number(record.tons.toFixed(2)),
-          pricePerTon: Math.round(record.pricePerTon),
-          totalAmount: Math.round(record.totalAmount),
-          paidAmount: Math.round(record.paidAmount),
-          balance: Math.round(advanceAmount > 0 ? advanceAmount : record.remainingAmount),
-          notes: record.notes,
-          balanceLabel: balanceLabel(balanceType)
-        }
-      })
-    }
-  ]
-}
-
-const exportSupplierLoadsExcel = () => {
-  downloadWorkbook(`${selectedSupplierName.value || 'supplier'}-tosh-hisobi`, buildSupplierSheets())
-}
-
-const exportSupplierLoadsPdf = () => {
-  printWorkbook(`${selectedSupplierName.value || "Ta'minotchi"} tosh hisobi`, buildSupplierSheets())
 }
 
 const balanceToneClass = (balanceType: unknown) => {
@@ -381,11 +296,6 @@ const openEditModal = (row: Record<string, unknown>) => {
   editingId.value = record.id
   formError.value = ''
   modalOpen.value = true
-}
-
-const openSupplierProfileModal = (supplierName: string) => {
-  selectedSupplierName.value = supplierName
-  supplierModalOpen.value = true
 }
 
 const saveLoad = () => {
@@ -548,9 +458,9 @@ const clearFilters = () => {
       </template>
 
       <template #cell-supplier="{ value }">
-        <button type="button" :class="getSupplierChipClass(value)" @click="openSupplierProfileModal(String(value))">
+        <span :class="getSupplierChipClass(value)">
           {{ value }}
-        </button>
+        </span>
       </template>
 
       <template #cell-totalAmount="{ value }">
@@ -665,97 +575,6 @@ const clearFilters = () => {
         </button>
       </div>
     </template>
-  </AppModal>
-
-  <AppModal :open="supplierModalOpen" :title="selectedSupplierName || 'Ta`minotchi profili'" size="xl" @close="supplierModalOpen = false">
-    <div v-if="supplierSummary" class="space-y-4">
-      <div class="flex justify-end">
-        <ExportActions label="Supplier yuklab olish" @excel="exportSupplierLoadsExcel" @pdf="exportSupplierLoadsPdf" />
-      </div>
-
-      <div class="grid gap-4 md:grid-cols-4">
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Jami tosh</p>
-          <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatTons(supplierSummary.totalTons) }}</p>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">O'rtacha narx / tonna</p>
-          <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(supplierSummary.averagePricePerTon) }}</p>
-        </div>
-        <div class="rounded-2xl bg-rose-50 px-4 py-3">
-          <p class="text-xs text-rose-700">Biz qarzmiz</p>
-          <p class="mt-1 text-lg font-semibold text-rose-700">{{ formatSom(supplierSummary.totalDebt) }}</p>
-        </div>
-        <div class="rounded-2xl bg-sky-50 px-4 py-3">
-          <p class="text-xs text-sky-700">U qarz</p>
-          <p class="mt-1 text-lg font-semibold text-sky-700">{{ formatSom(supplierSummary.totalAdvance) }}</p>
-        </div>
-      </div>
-
-      <div class="grid gap-4 md:grid-cols-4">
-        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-100">
-          <p class="text-xs text-slate-500">Jami summa</p>
-          <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(supplierSummary.totalAmount) }}</p>
-        </div>
-        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-100">
-          <p class="text-xs text-slate-500">Jami to'langan</p>
-          <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(supplierSummary.totalPaid) }}</p>
-        </div>
-        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-100">
-          <p class="text-xs text-slate-500">Oxirgi sana</p>
-          <p class="mt-1 text-base font-semibold text-slate-900">{{ formatDate(supplierSummary.lastLoadDate) }}</p>
-        </div>
-        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-100">
-          <p class="text-xs text-slate-500">Yozuvlar soni</p>
-          <p class="mt-1 text-base font-semibold text-slate-900">{{ supplierProfile.loadCount }}</p>
-        </div>
-      </div>
-
-      <div v-if="supplierContact" class="grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-100">
-          <p class="text-xs text-slate-500">Telefon</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ supplierContact.phone || '-' }}</p>
-        </div>
-        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-100">
-          <p class="text-xs text-slate-500">Manzil</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ supplierContact.address || '-' }}</p>
-        </div>
-        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-100">
-          <p class="text-xs text-slate-500">Balans holati</p>
-          <p class="mt-1 text-sm font-semibold" :class="balanceToneClass(supplierSummary.balanceType)">
-            {{ balanceLabel(supplierSummary.balanceType) }}: {{ formatSom(supplierSummary.balanceAmount) }}
-          </p>
-        </div>
-      </div>
-
-      <AppTable :columns="supplierLoadColumns" :rows="supplierLoadRows" empty-text="Bu ta'minotchi bo`yicha kirim topilmadi.">
-        <template #cell-factory="{ value }">
-          {{ value || '-' }}
-        </template>
-
-        <template #cell-tons="{ value }">
-          {{ formatTons(Number(value)) }}
-        </template>
-
-        <template #cell-pricePerTon="{ value }">
-          {{ formatSom(Number(value)) }}
-        </template>
-
-        <template #cell-totalAmount="{ value }">
-          {{ formatSom(Number(value)) }}
-        </template>
-
-        <template #cell-paidAmount="{ value }">
-          {{ formatSom(Number(value)) }}
-        </template>
-
-        <template #cell-balance="{ row, value }">
-          <span :class="['font-semibold', balanceToneClass(row.balanceType)]">
-            {{ balanceLabel(row.balanceType) }}: {{ formatSom(Number(value)) }}
-          </span>
-        </template>
-      </AppTable>
-    </div>
   </AppModal>
 
   <ConfirmDialog

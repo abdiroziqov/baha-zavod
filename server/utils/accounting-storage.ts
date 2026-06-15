@@ -60,9 +60,6 @@ const expenseCategories: ExpenseCategory[] = [
   'Svet',
   'Bozorlik',
   'Yuklash',
-  'Sementovoz kredit',
-  'Panel kredit',
-  'Kobalt kredit',
   'Soliq',
   'Boshqa'
 ]
@@ -75,7 +72,7 @@ const scaleCashTypes: ScaleCashType[] = ['kirim', 'chiqim']
 
 const defaultCostProfile: CostProfile = {
   sandPricePerTon: 240,
-  chalkPricePerTon: 250,
+  chalkPricePerTon: 450,
   sandWorkerCostPerTon: 35,
   chalkWorkerCostPerTon: 40,
   marketCostPerTon: 0,
@@ -103,6 +100,13 @@ const isShipmentType = (value: unknown): value is ShipmentType =>
   typeof value === 'string' && shipmentTypes.includes(value as ShipmentType)
 const isExpenseCategory = (value: unknown): value is ExpenseCategory =>
   typeof value === 'string' && expenseCategories.includes(value as ExpenseCategory)
+const normalizeExpenseCategory = (value: unknown): ExpenseCategory => {
+  if (isExpenseCategory(value)) {
+    return value
+  }
+
+  return 'Boshqa'
+}
 const isPaymentMethod = (value: unknown): value is PaymentMethod =>
   typeof value === 'string' && paymentMethods.includes(value as PaymentMethod)
 const isReminderFrequency = (value: unknown): value is ReminderFrequency =>
@@ -164,10 +168,11 @@ const getPaymentStatus = (totalAmount: number, paidAmount: number): PaymentStatu
 
 const normalizeCostProfile = (value: unknown): CostProfile => {
   const profile = typeof value === 'object' && value ? (value as Partial<CostProfile>) : {}
+  const chalkPricePerTon = asNumber(profile.chalkPricePerTon, defaultCostProfile.chalkPricePerTon)
 
   return {
     sandPricePerTon: asNumber(profile.sandPricePerTon, defaultCostProfile.sandPricePerTon),
-    chalkPricePerTon: asNumber(profile.chalkPricePerTon, defaultCostProfile.chalkPricePerTon),
+    chalkPricePerTon: chalkPricePerTon === 250 ? defaultCostProfile.chalkPricePerTon : chalkPricePerTon,
     sandWorkerCostPerTon: asNumber(profile.sandWorkerCostPerTon, defaultCostProfile.sandWorkerCostPerTon),
     chalkWorkerCostPerTon: asNumber(profile.chalkWorkerCostPerTon, defaultCostProfile.chalkWorkerCostPerTon),
     marketCostPerTon: asNumber(profile.marketCostPerTon, defaultCostProfile.marketCostPerTon),
@@ -356,7 +361,7 @@ const normalizeExpenseRecord = (record: unknown): OperationalExpense => {
     id: asString(source.id, createId('exp')),
     date: asString(source.date, todayIso()),
     factory: isFactory(source.factory) ? source.factory : '',
-    category: isExpenseCategory(source.category) ? source.category : 'Ishchi',
+    category: normalizeExpenseCategory(source.category),
     description: asString(source.description),
     amount: asNumber(source.amount),
     paymentMethod: isPaymentMethod(source.paymentMethod) ? source.paymentMethod : 'Naqd',

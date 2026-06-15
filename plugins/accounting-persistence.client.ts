@@ -103,6 +103,10 @@ export default defineNuxtPlugin((nuxtApp) => {
           updatedAt: new Date().toISOString()
         } as AccountingStateSnapshot
 
+        if (localSnapshot.defaultCosts?.chalkPricePerTon === 250) {
+          localSnapshot.defaultCosts.chalkPricePerTon = 450
+        }
+
         return hasServerContent(localSnapshot) ? localSnapshot : null
       } catch (error) {
         console.error('Local storage migration parse failed', error)

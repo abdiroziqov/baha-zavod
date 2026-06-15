@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import type { BalanceType, IncomingLoadRecord } from '~/types/accounting'
+import type { BalanceType, ContactRecord, IncomingLoadRecord } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
 
 definePageMeta({
   layout: 'dashboard'
 })
 
-const { supplierSummaries, supplierContacts, getSupplierProfile } = useFactoryAccounting()
+const { supplierSummaries, supplierContacts, addContact, updateContact, getSupplierProfile } = useFactoryAccounting()
+const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { getSupplierChipClass } = useSupplierHighlight()
 const { downloadWorkbook } = useExcelExport()
@@ -17,7 +18,18 @@ const filters = reactive({
   supplier: ''
 })
 
+const supplierForm = reactive<Omit<ContactRecord, 'id' | 'type' | 'createdAt'>>({
+  name: '',
+  phone: '',
+  telegramChatId: '',
+  telegramUsername: '',
+  address: '',
+  notes: ''
+})
+
 const selectedSupplierName = ref('')
+const supplierModalOpen = ref(false)
+const supplierFormError = ref('')
 const supplierSelectOptions = computed(() =>
   supplierContacts.value.map((contact) => ({
     label: contact.name,
@@ -106,6 +118,66 @@ const selectedSupplierLoadRows = computed<Record<string, unknown>[]>(() =>
 
 const selectSupplier = (supplierName: string) => {
   selectedSupplierName.value = supplierName
+}
+
+const resetSupplierForm = () => {
+  supplierForm.name = ''
+  supplierForm.phone = ''
+  supplierForm.telegramChatId = ''
+  supplierForm.telegramUsername = ''
+  supplierForm.address = ''
+  supplierForm.notes = ''
+  supplierFormError.value = ''
+}
+
+const openSupplierModal = () => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  resetSupplierForm()
+  supplierModalOpen.value = true
+}
+
+const saveSupplier = () => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  const name = supplierForm.name.trim()
+
+  if (!name) {
+    supplierFormError.value = "Ta'minotchi nomini kiriting."
+    return
+  }
+
+  const existing = supplierContacts.value.find((contact) => contact.name.trim().toLowerCase() === name.toLowerCase())
+
+  if (existing) {
+    updateContact({
+      ...existing,
+      name,
+      phone: supplierForm.phone,
+      telegramChatId: supplierForm.telegramChatId,
+      telegramUsername: supplierForm.telegramUsername,
+      address: supplierForm.address,
+      notes: supplierForm.notes
+    })
+  } else {
+    addContact({
+      type: 'supplier',
+      name,
+      phone: supplierForm.phone,
+      telegramChatId: supplierForm.telegramChatId,
+      telegramUsername: supplierForm.telegramUsername,
+      address: supplierForm.address,
+      notes: supplierForm.notes
+    })
+  }
+
+  selectedSupplierName.value = name
+  supplierModalOpen.value = false
+  resetSupplierForm()
 }
 
 const clearFilters = () => {
@@ -234,9 +306,15 @@ const balanceToneClass = (balanceType: unknown) => {
     <div>
       <h2 class="page-title">{{ t("Ta'minotchilar") }}</h2>
       <p class="page-subtitle">{{ t("Sizga tosh olib keladigan odamlar va firmalarning umumiy hisoboti.") }}</p>
+      <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
     </div>
 
-    <ExportActions label="Yuklab olish" @excel="exportDirectoryExcel" @pdf="exportDirectoryPdf" />
+    <div class="flex flex-wrap gap-2">
+      <ExportActions label="Yuklab olish" @excel="exportDirectoryExcel" @pdf="exportDirectoryPdf" />
+      <button v-if="isAdmin" type="button" class="btn-primary" @click="openSupplierModal">
+        {{ t("Ta'minotchi qo'shish") }}
+      </button>
+    </div>
   </section>
 
   <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
@@ -405,4 +483,27 @@ const balanceToneClass = (balanceType: unknown) => {
       </div>
     </article>
   </section>
+
+  <AppModal :open="supplierModalOpen" title="Ta'minotchi qo`shish" size="sm" @close="supplierModalOpen = false">
+    <div class="grid gap-4">
+      <AppInput
+        v-model="supplierForm.name"
+        label="Ta'minotchi nomi"
+        placeholder="Masalan, Begzod"
+        :invalid="Boolean(supplierFormError) && !supplierForm.name.trim()"
+        required
+      />
+    </div>
+
+    <p v-if="supplierFormError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+      {{ supplierFormError }}
+    </p>
+
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn-secondary" @click="supplierModalOpen = false">{{ t('Bekor qilish') }}</button>
+        <button type="button" class="btn-primary" @click="saveSupplier">{{ t("Qo`shish") }}</button>
+      </div>
+    </template>
+  </AppModal>
 </template>

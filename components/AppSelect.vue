@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useId } from 'vue'
+import { nextTick, useId } from 'vue'
 
 interface SelectOption {
   label: string
@@ -38,7 +38,14 @@ const generatedId = useId()
 const { t } = useUiLocale()
 const selectId = computed(() => props.id || `select-${generatedId}`)
 const wrapperRef = ref<HTMLElement | null>(null)
+const dropdownRef = ref<HTMLElement | null>(null)
 const dropdownOpen = ref(false)
+const dropdownStyle = reactive({
+  left: '0px',
+  top: '0px',
+  width: '0px',
+  maxHeight: '16rem'
+})
 const displayOptions = computed(() =>
   props.options.map((option) => ({
     ...option,
@@ -76,6 +83,7 @@ const openDropdown = () => {
   }
 
   dropdownOpen.value = true
+  void nextTick(updateDropdownPosition)
 }
 
 const closeDropdown = () => {
@@ -88,6 +96,10 @@ const toggleDropdown = () => {
   }
 
   dropdownOpen.value = !dropdownOpen.value
+
+  if (dropdownOpen.value) {
+    void nextTick(updateDropdownPosition)
+  }
 }
 
 const handleEscape = () => {
@@ -115,12 +127,44 @@ const handleDocumentClick = (event: MouseEvent) => {
   }
 }
 
+const updateDropdownPosition = () => {
+  if (!wrapperRef.value || !dropdownOpen.value) {
+    return
+  }
+
+  const rect = wrapperRef.value.getBoundingClientRect()
+  const viewportPadding = 8
+  const gap = 8
+  const spaceBelow = window.innerHeight - rect.bottom - viewportPadding
+  const spaceAbove = rect.top - viewportPadding
+  const maxHeight = Math.max(120, Math.min(256, Math.max(spaceBelow, spaceAbove)))
+  const opensUp = spaceBelow < 180 && spaceAbove > spaceBelow
+  const dropdownHeight = Math.min(dropdownRef.value?.offsetHeight || maxHeight, maxHeight)
+
+  dropdownStyle.left = `${rect.left}px`
+  dropdownStyle.width = `${rect.width}px`
+  dropdownStyle.maxHeight = `${maxHeight}px`
+  dropdownStyle.top = opensUp
+    ? `${Math.max(viewportPadding, rect.top - dropdownHeight - gap)}px`
+    : `${Math.min(rect.bottom + gap, window.innerHeight - viewportPadding - maxHeight)}px`
+}
+
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick)
+  window.addEventListener('resize', updateDropdownPosition)
+  window.addEventListener('scroll', updateDropdownPosition, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick)
+  window.removeEventListener('resize', updateDropdownPosition)
+  window.removeEventListener('scroll', updateDropdownPosition, true)
+})
+
+watch(dropdownOpen, (open) => {
+  if (open) {
+    void nextTick(updateDropdownPosition)
+  }
 })
 
 const selectClasses = computed(() => [
@@ -186,37 +230,41 @@ const selectClasses = computed(() => [
         </button>
       </div>
 
-      <div
-        v-if="dropdownOpen"
-        class="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl"
-      >
-        <button
-          v-for="option in filteredOptions"
-          :key="option.value"
-          type="button"
-          class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
-          @mousedown.prevent="selectOption(option.value)"
+      <Teleport to="body">
+        <div
+          v-if="dropdownOpen"
+          ref="dropdownRef"
+          class="fixed z-[1000] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl"
+          :style="dropdownStyle"
         >
-          <span>{{ option.label }}</span>
-          <svg
-            v-if="option.value === modelValue"
-            class="h-4 w-4 text-brand-700"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
+          <button
+            v-for="option in filteredOptions"
+            :key="option.value"
+            type="button"
+            class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+            @mousedown.prevent="selectOption(option.value)"
           >
-            <path
-              fill-rule="evenodd"
-              d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.42l2.293 2.294 6.793-6.794a1 1 0 011.414 0z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </button>
+            <span>{{ option.label }}</span>
+            <svg
+              v-if="option.value === modelValue"
+              class="h-4 w-4 text-brand-700"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.42l2.293 2.294 6.793-6.794a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
 
-        <p v-if="!filteredOptions.length" class="px-3 py-2 text-sm text-slate-400">
-          {{ t('Natija topilmadi') }}
-        </p>
-      </div>
+          <p v-if="!filteredOptions.length" class="px-3 py-2 text-sm text-slate-400">
+            {{ t('Natija topilmadi') }}
+          </p>
+        </div>
+      </Teleport>
     </div>
   </div>
 </template>

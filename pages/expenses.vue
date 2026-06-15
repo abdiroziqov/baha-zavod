@@ -399,7 +399,7 @@ watch(
           <p class="mt-1 text-lg font-semibold text-sky-900">{{ formatSom(sandSalePricePerTon) }}</p>
         </div>
         <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
-          <p class="text-xs text-sky-700">Mel sotuv narxi / kg</p>
+          <p class="text-xs text-sky-700">Mel kraska sotuv narxi / kg</p>
           <p class="mt-1 text-lg font-semibold text-sky-900">{{ formatSom(chalkSalePricePerTon) }}</p>
         </div>
       </div>
@@ -424,13 +424,13 @@ watch(
       </div>
 
       <div class="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        `240 / 250` sotuv narxi `/kg`. Tannarxga kirmaydi. Qoplik tannarxida `ishchi + bozorliq + ortib berish + ovqat + boshqaruvchi + svet + tosh + qop`
+        `240 / 450` sotuv narxi `/kg`. Tannarxga kirmaydi. Qoplik tannarxida `ishchi + bozorliq + ortib berish + ovqat + boshqaruvchi + svet + tosh + qop`
         hisoblanadi. Rasipnoyda esa `ortib berish` va `qop` yo`q.
       </div>
 
       <div class="grid gap-3 md:grid-cols-2">
         <AppInput v-model="costForm.sandPricePerTon" type="number" min="0" step="0.01" label="Qum sotuv narxi / kg" :disabled="!isAdmin" />
-        <AppInput v-model="costForm.chalkPricePerTon" type="number" min="0" step="0.01" label="Mel sotuv narxi / kg" :disabled="!isAdmin" />
+        <AppInput v-model="costForm.chalkPricePerTon" type="number" min="0" step="0.01" label="Mel kraska sotuv narxi / kg" :disabled="!isAdmin" />
         <AppInput v-model="costForm.sandWorkerCostPerTon" type="number" min="0" step="0.01" label="Qum ishchi" :disabled="!isAdmin" />
         <AppInput v-model="costForm.chalkWorkerCostPerTon" type="number" min="0" step="0.01" label="Mel ishchi" :disabled="!isAdmin" />
         <AppInput v-model="costForm.marketCostPerTon" type="number" min="0" step="0.01" label="Bozorliq" :disabled="!isAdmin" />
@@ -449,7 +449,7 @@ watch(
 
       <div class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
         Formula mahsulot turiga qarab ishlaydi. `Qum` uchun ishchi `35`, `Mel` uchun ishchi `40`.
-        `Qum/Mel sotuv narxi / kg` saqlanadi, lekin tannarxga qo'shilmaydi.
+        `Qum/Mel kraska sotuv narxi / kg` saqlanadi, lekin tannarxga qo'shilmaydi.
         `Bozorliq` ishlab chiqarilgan jami mahsulotga qo'shiladi. Rasipnoyda `ortib berish` va `qop` hisobga olinmaydi.
       </div>
     </article>

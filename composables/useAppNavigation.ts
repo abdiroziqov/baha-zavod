@@ -4,7 +4,6 @@ export type NavigationIcon =
   | 'dashboard'
   | 'analysis'
   | 'audit'
-  | 'scale'
   | 'barter'
   | 'quick-entry'
   | 'manual-entry'
@@ -30,7 +29,6 @@ const navigationItems: NavigationItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: 'dashboard', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Analiz DB', to: '/analysis', icon: 'analysis', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Audit Log', to: '/audit', icon: 'audit', roles: ['admin'], group: 'main' },
-  { label: 'Tarozi', to: '/scale', icon: 'scale', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Barter DB', to: '/barter', icon: 'barter', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Kunlik Hisob', to: '/production', icon: 'production', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Tosh Kirimi', to: '/raw-materials', icon: 'raw-materials', roles: ['admin', 'manager', 'operator'], group: 'main' },

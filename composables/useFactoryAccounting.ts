@@ -100,9 +100,6 @@ export const expenseCategories: ExpenseCategory[] = [
   'Svet',
   'Bozorlik',
   'Yuklash',
-  'Sementovoz kredit',
-  'Panel kredit',
-  'Kobalt kredit',
   'Soliq',
   'Boshqa'
 ]
@@ -115,7 +112,7 @@ export const scaleCashTypes: ScaleCashType[] = ['kirim', 'chiqim']
 
 export const defaultCostProfile: CostProfile = {
   sandPricePerTon: 240,
-  chalkPricePerTon: 250,
+  chalkPricePerTon: 450,
   sandWorkerCostPerTon: 35,
   chalkWorkerCostPerTon: 40,
   marketCostPerTon: 0,
@@ -1691,79 +1688,6 @@ export const useFactoryAccounting = () => {
     }
   }
 
-  const replaceScaleState = (entries: ScaleEntry[], syncMeta: ScaleSyncMeta) => {
-    scaleEntries.value = entries.map((record) => normalizeScaleEntryRecord(record)).sort((left, right) => {
-      const rightKey = `${right.date} ${right.time}`
-      const leftKey = `${left.date} ${left.time}`
-      return rightKey.localeCompare(leftKey)
-    })
-    scaleSyncMeta.value = normalizeScaleSyncMeta(syncMeta)
-  }
-
-  const addScaleCashEntry = (payload: Omit<ScaleCashEntry, 'id' | 'createdAt'>) => {
-    if (!guardAdminMutation()) {
-      return
-    }
-
-    const record = normalizeScaleCashEntryRecord({
-      id: createId('scale-cash'),
-      ...payload,
-      createdAt: new Date().toISOString()
-    })
-    scaleCashEntries.value.unshift(record)
-    appendAuditLog({
-      action: 'add',
-      section: 'Tarozi',
-      entityType: 'scale-cash',
-      recordId: record.id,
-      summary: `Tarozi ${record.type} puli qo'shildi`,
-      after: record
-    })
-  }
-
-  const updateScaleCashEntry = (payload: ScaleCashEntry) => {
-    if (!guardAdminMutation()) {
-      return
-    }
-
-    const index = scaleCashEntries.value.findIndex((record) => record.id === payload.id)
-
-    if (index !== -1) {
-      const previous = scaleCashEntries.value[index]
-      const record = normalizeScaleCashEntryRecord(payload)
-      scaleCashEntries.value[index] = record
-      appendAuditLog({
-        action: 'update',
-        section: 'Tarozi',
-        entityType: 'scale-cash',
-        recordId: record.id,
-        summary: `Tarozi ${record.type} puli tahrirlandi`,
-        before: previous,
-        after: record
-      })
-    }
-  }
-
-  const removeScaleCashEntry = (id: string) => {
-    if (!guardAdminMutation()) {
-      return
-    }
-
-    const existing = scaleCashEntries.value.find((record) => record.id === id)
-    scaleCashEntries.value = scaleCashEntries.value.filter((record) => record.id !== id)
-
-    if (existing) {
-      appendAuditLog({
-        action: 'delete',
-        section: 'Tarozi',
-        entityType: 'scale-cash',
-        recordId: existing.id,
-        summary: `Tarozi ${existing.type} puli o'chirildi`,
-        before: existing
-      })
-    }
-  }
-
   const addSale = (
     payload: Omit<SaleRecord, 'id' | 'totalAmount' | 'remainingAmount' | 'advanceAmount' | 'balanceAmount' | 'balanceType' | 'paymentStatus'>
   ) => {
@@ -2641,10 +2565,6 @@ export const useFactoryAccounting = () => {
     addIncomingLoad,
     updateIncomingLoad,
     removeIncomingLoad,
-    replaceScaleState,
-    addScaleCashEntry,
-    updateScaleCashEntry,
-    removeScaleCashEntry,
     addSale,
     updateSale,
     removeSale,

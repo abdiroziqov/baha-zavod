@@ -124,6 +124,14 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
       </header>
 
       <div class="space-y-3 text-sm text-slate-600">
+        <div class="rounded-2xl bg-amber-50 px-4 py-3 text-amber-800">
+          <p class="font-semibold text-amber-900">O'tgan oydan qolgan qoldiq</p>
+          <p class="mt-1">
+            O'tgan oy ma'lumotlarini o'sha sana bilan kiriting: tosh qoldiq uchun `Tosh Kirimi`,
+            tayyor yuk uchun `Kunlik Hisob`, klient qarzi uchun `Pul Kiritish`, sotilgan yuk uchun `Sotuvlar`.
+            Keyin `Hammasi` yoki kerakli sana oralig'i tanlansa qoldiq avtomatik chiqadi.
+          </p>
+        </div>
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="font-semibold text-slate-900">Tosh qoldiq</p>
           <p class="mt-1">Kirim tosh - ishlab chiqarishda ketgan tosh</p>
