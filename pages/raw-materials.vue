@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BalanceType, FactoryName, IncomingLoadRecord, PaymentStatus, VehicleType } from '~/types/accounting'
+import type { BalanceType, ContactRecord, FactoryName, IncomingLoadRecord, PaymentStatus, VehicleType } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
 
 definePageMeta({
@@ -18,11 +18,23 @@ type IncomingLoadFormState = {
   notes: string
 }
 
+type SupplierFormState = {
+  name: string
+  phone: string
+  telegramUsername: string
+  address: string
+  notes: string
+}
+
 const {
   incomingLoads,
   factoryOptions,
   supplierContacts,
+  supplierSummaries,
   latestDate,
+  addContact,
+  updateContact,
+  removeContact,
   addIncomingLoad,
   updateIncomingLoad,
   removeIncomingLoad
@@ -64,12 +76,38 @@ const formError = ref('')
 
 const deleteDialogOpen = ref(false)
 const selectedLoad = ref<IncomingLoadRecord | null>(null)
+const supplierModalOpen = ref(false)
+const supplierDeleteDialogOpen = ref(false)
+const editingSupplierId = ref<string | null>(null)
+const selectedSupplier = ref<ContactRecord | null>(null)
+const supplierError = ref('')
+const supplierForm = reactive<SupplierFormState>({
+  name: '',
+  phone: '',
+  telegramUsername: '',
+  address: '',
+  notes: ''
+})
 
 const supplierSelectOptions = computed(() =>
   supplierContacts.value.map((contact) => ({
     label: contact.name,
     value: contact.name
   }))
+)
+
+const supplierRows = computed<Record<string, unknown>[]>(() =>
+  supplierContacts.value.map((contact) => {
+    const summary = supplierSummaries.value.find((record) => record.supplierName.trim().toLowerCase() === contact.name.trim().toLowerCase())
+
+    return {
+      ...contact,
+      balanceType: summary?.balanceType ?? 'yopilgan',
+      balanceAmount: summary?.balanceAmount ?? 0,
+      totalTons: summary?.totalTons ?? 0,
+      loadCount: summary?.loadCount ?? 0
+    }
+  })
 )
 
 const columns: TableColumn[] = [
@@ -81,6 +119,14 @@ const columns: TableColumn[] = [
   { key: 'supplier', label: "Ta'minotchi" },
   { key: 'totalAmount', label: 'Jami narx', align: 'right' },
   { key: 'balance', label: 'Balans', align: 'right' },
+  { key: 'actions', label: 'Amal', align: 'right' }
+]
+
+const supplierColumns: TableColumn[] = [
+  { key: 'name', label: "Ta'minotchi" },
+  { key: 'phone', label: 'Telefon' },
+  { key: 'balanceAmount', label: 'Balans', align: 'right' },
+  { key: 'totalTons', label: 'Tonna', align: 'right' },
   { key: 'actions', label: 'Amal', align: 'right' }
 ]
 
@@ -376,6 +422,117 @@ const closeDelete = () => {
   deleteDialogOpen.value = false
 }
 
+const resetSupplierForm = () => {
+  Object.assign(supplierForm, {
+    name: '',
+    phone: '',
+    telegramUsername: '',
+    address: '',
+    notes: ''
+  })
+  editingSupplierId.value = null
+  supplierError.value = ''
+}
+
+const openSupplierCreateModal = () => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  resetSupplierForm()
+  supplierModalOpen.value = true
+}
+
+const openSupplierEditModal = (row: Record<string, unknown>) => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  const record = row as ContactRecord
+  Object.assign(supplierForm, {
+    name: record.name,
+    phone: record.phone,
+    telegramUsername: record.telegramUsername,
+    address: record.address,
+    notes: record.notes
+  })
+  editingSupplierId.value = record.id
+  supplierError.value = ''
+  supplierModalOpen.value = true
+}
+
+const saveSupplier = () => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  const name = supplierForm.name.trim()
+
+  if (!name) {
+    supplierError.value = 'Ta`minotchi nomini kiriting.'
+    return
+  }
+
+  const duplicate = supplierContacts.value.find(
+    (contact) => contact.id !== editingSupplierId.value && contact.name.trim().toLowerCase() === name.toLowerCase()
+  )
+
+  if (duplicate) {
+    supplierError.value = 'Bu ta`minotchi ro`yxatda bor.'
+    return
+  }
+
+  const payload = {
+    type: 'supplier' as const,
+    name,
+    phone: supplierForm.phone.trim(),
+    telegramChatId: '',
+    telegramUsername: supplierForm.telegramUsername.trim(),
+    address: supplierForm.address.trim(),
+    notes: supplierForm.notes.trim()
+  }
+
+  if (editingSupplierId.value) {
+    const existing = supplierContacts.value.find((contact) => contact.id === editingSupplierId.value)
+
+    if (existing) {
+      updateContact({
+        ...existing,
+        ...payload
+      })
+    }
+  } else {
+    addContact(payload)
+  }
+
+  supplierModalOpen.value = false
+  resetSupplierForm()
+}
+
+const askSupplierDelete = (row: Record<string, unknown>) => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  selectedSupplier.value = row as ContactRecord
+  supplierDeleteDialogOpen.value = true
+}
+
+const confirmSupplierDelete = () => {
+  if (!isAdmin.value || !selectedSupplier.value) {
+    return
+  }
+
+  removeContact(selectedSupplier.value.id)
+  selectedSupplier.value = null
+  supplierDeleteDialogOpen.value = false
+}
+
+const closeSupplierDelete = () => {
+  selectedSupplier.value = null
+  supplierDeleteDialogOpen.value = false
+}
+
 const clearFilters = () => {
   filters.startDate = ''
   filters.endDate = ''
@@ -437,6 +594,48 @@ const clearFilters = () => {
         <button type="button" class="btn-secondary w-full" @click="clearFilters">{{ t('Filtrni tozalash') }}</button>
       </div>
     </div>
+  </section>
+
+  <section class="panel p-5">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h3 class="text-base font-semibold text-slate-900">{{ t("Ta'minotchilar") }}</h3>
+        <p class="mt-1 text-sm text-slate-500">{{ t("Tosh kirimida ishlatiladigan supplier ro'yxati.") }}</p>
+      </div>
+      <button v-if="isAdmin" type="button" class="btn-secondary" @click="openSupplierCreateModal">
+        {{ t("Ta'minotchi qo'shish") }}
+      </button>
+    </div>
+
+    <AppTable :columns="supplierColumns" :rows="supplierRows" empty-text="Ta'minotchi topilmadi.">
+      <template #cell-name="{ value }">
+        <span :class="getSupplierChipClass(value)">{{ value }}</span>
+      </template>
+
+      <template #cell-phone="{ value }">
+        {{ value || '-' }}
+      </template>
+
+      <template #cell-balanceAmount="{ row, value }">
+        <span :class="['font-semibold', balanceToneClass(row.balanceType)]">
+          {{ balanceLabel(row.balanceType) }}: {{ formatSom(Number(value)) }}
+        </span>
+      </template>
+
+      <template #cell-totalTons="{ value }">
+        {{ formatTons(Number(value)) }}
+      </template>
+
+      <template #cell-actions="{ row }">
+        <div class="flex justify-end gap-2">
+          <template v-if="isAdmin">
+            <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openSupplierEditModal(row)">{{ t('Tahrirlash') }}</button>
+            <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askSupplierDelete(row)">{{ t("O'chirish") }}</button>
+          </template>
+          <span v-else class="text-xs text-slate-400">Faqat admin</span>
+        </div>
+      </template>
+    </AppTable>
   </section>
 
   <section class="panel p-5">
@@ -577,6 +776,31 @@ const clearFilters = () => {
     </template>
   </AppModal>
 
+  <AppModal :open="supplierModalOpen" :title="editingSupplierId ? 'Ta`minotchini tahrirlash' : 'Ta`minotchi qo`shish'" size="lg" @close="supplierModalOpen = false">
+    <div class="grid gap-4 md:grid-cols-2">
+      <AppInput v-model="supplierForm.name" label="Nomi" :invalid="Boolean(supplierError) && !supplierForm.name.trim()" required />
+      <AppInput v-model="supplierForm.phone" label="Telefon" placeholder="+998..." />
+      <AppInput v-model="supplierForm.telegramUsername" label="Telegram" placeholder="@username" />
+      <AppInput v-model="supplierForm.address" label="Manzil" />
+      <div class="md:col-span-2">
+        <AppInput v-model="supplierForm.notes" label="Izoh" />
+      </div>
+    </div>
+
+    <p v-if="supplierError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+      {{ supplierError }}
+    </p>
+
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn-secondary" @click="supplierModalOpen = false">{{ t('Bekor qilish') }}</button>
+        <button type="button" class="btn-primary" @click="saveSupplier">
+          {{ editingSupplierId ? t('Saqlash') : t("Qo`shish") }}
+        </button>
+      </div>
+    </template>
+  </AppModal>
+
   <ConfirmDialog
     :open="deleteDialogOpen"
     title="Kirim yozuvini o'chirish"
@@ -585,5 +809,15 @@ const clearFilters = () => {
     cancel-text="Bekor qilish"
     @confirm="confirmDelete"
     @cancel="closeDelete"
+  />
+
+  <ConfirmDialog
+    :open="supplierDeleteDialogOpen"
+    title="Ta'minotchini o'chirish"
+    :message="`${selectedSupplier?.name ?? ''} ro'yxatdan o'chirilsinmi? Eski kirim yozuvlari o'chmaydi.`"
+    confirm-text="O'chirish"
+    cancel-text="Bekor qilish"
+    @confirm="confirmSupplierDelete"
+    @cancel="closeSupplierDelete"
   />
 </template>

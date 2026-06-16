@@ -2,20 +2,15 @@ import type { UserRole } from '~/types/auth'
 
 export type NavigationIcon =
   | 'dashboard'
-  | 'analysis'
   | 'audit'
   | 'barter'
-  | 'quick-entry'
-  | 'manual-entry'
   | 'production'
   | 'raw-materials'
-  | 'suppliers'
   | 'inventory'
   | 'sales'
   | 'debtors'
   | 'expenses'
   | 'reports'
-  | 'clients'
 
 export interface NavigationItem {
   label: string
@@ -27,20 +22,15 @@ export interface NavigationItem {
 
 const navigationItems: NavigationItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: 'dashboard', roles: ['admin', 'manager', 'operator'], group: 'main' },
-  { label: 'Analiz DB', to: '/analysis', icon: 'analysis', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Audit Log', to: '/audit', icon: 'audit', roles: ['admin'], group: 'main' },
   { label: 'Barter DB', to: '/barter', icon: 'barter', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Kunlik Hisob', to: '/production', icon: 'production', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Tosh Kirimi', to: '/raw-materials', icon: 'raw-materials', roles: ['admin', 'manager', 'operator'], group: 'main' },
-  { label: "Ta'minotchilar", to: '/suppliers', icon: 'suppliers', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Ostatka', to: '/inventory', icon: 'inventory', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Sotuvlar', to: '/sales', icon: 'sales', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Qarzdorlar', to: '/debtors', icon: 'debtors', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Chiqimlar', to: '/expenses', icon: 'expenses', roles: ['admin', 'manager', 'operator'], group: 'main' },
-  { label: 'Hisobotlar', to: '/reports', icon: 'reports', roles: ['admin', 'manager', 'operator'], group: 'main' },
-  { label: 'Klientlar', to: '/users', icon: 'clients', roles: ['admin', 'manager', 'operator'], group: 'main' },
-  { label: 'Tez Kiritish', to: '/quick-entry', icon: 'quick-entry', roles: ['admin'], group: 'manual' },
-  { label: 'Pul Kiritish', to: '/manual-entry', icon: 'manual-entry', roles: ['admin'], group: 'manual' }
+  { label: 'Hisobotlar', to: '/reports', icon: 'reports', roles: ['admin', 'manager', 'operator'], group: 'main' }
 ]
 
 const titleMap = navigationItems.reduce<Record<string, string>>((map, item) => {

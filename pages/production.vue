@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { DailyFactoryRecord, ExpenseCategory, FactoryName, PaymentMethod, ProductType } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
-import { isBulkAllowedForProduct, normalizeBulkOutputTons } from '~/composables/useProductRules'
 
 definePageMeta({
   layout: 'dashboard'
@@ -151,45 +150,30 @@ const costItems = computed(() => [
 ])
 
 const getCreateFactoryState = (factory: FactoryName) => createForms[factory]
-const getCreateFactoryBulkAllowed = (factory: FactoryName) =>
-  isBulkAllowedForProduct(getCreateFactoryState(factory).productType)
 const getCreateFactoryOutputTons = (factory: FactoryName) =>
   getOutputTons({
     baggedOutputTons: Number(getCreateFactoryState(factory).baggedOutputTons),
-    bulkOutputTons: normalizeBulkOutputTons(
-      getCreateFactoryState(factory).productType,
-      Number(getCreateFactoryState(factory).bulkOutputTons)
-    )
+    bulkOutputTons: 0
   })
 const getCreateFactoryUsedStoneTons = (factory: FactoryName) =>
   getUsedStoneTons({
     baggedOutputTons: Number(getCreateFactoryState(factory).baggedOutputTons),
-    bulkOutputTons: normalizeBulkOutputTons(
-      getCreateFactoryState(factory).productType,
-      Number(getCreateFactoryState(factory).bulkOutputTons)
-    )
+    bulkOutputTons: 0
   })
 const getCreateFactoryBagCount = (factory: FactoryName) => getBagCount(Number(getCreateFactoryState(factory).baggedOutputTons))
 const getCreateFactoryBaggedCostPerTon = (factory: FactoryName) =>
   getCostPerTon(defaultCosts.value, getCreateFactoryState(factory).productType)
-const getCreateFactoryBulkCostPerTon = (factory: FactoryName) =>
-  getBulkCostPerTon(defaultCosts.value, getCreateFactoryState(factory).productType)
 const getCreateFactoryBaggedTotalCost = (factory: FactoryName) =>
   getSaleTotal(Number(getCreateFactoryState(factory).baggedOutputTons), getCreateFactoryBaggedCostPerTon(factory))
-const getCreateFactoryBulkTotalCost = (factory: FactoryName) =>
-  getSaleTotal(
-    normalizeBulkOutputTons(getCreateFactoryState(factory).productType, Number(getCreateFactoryState(factory).bulkOutputTons)),
-    getCreateFactoryBulkCostPerTon(factory)
-  )
 const getCreateFactoryCostBreakdown = (factory: FactoryName) =>
   getProductionCostBreakdown(
     defaultCosts.value,
     getCreateFactoryState(factory).productType,
     Number(getCreateFactoryState(factory).baggedOutputTons),
-    normalizeBulkOutputTons(getCreateFactoryState(factory).productType, Number(getCreateFactoryState(factory).bulkOutputTons))
+    0
   )
 const getCreateFactoryTotalCost = (factory: FactoryName) =>
-  Number((getCreateFactoryBaggedTotalCost(factory) + getCreateFactoryBulkTotalCost(factory)).toFixed(2))
+  Number(getCreateFactoryBaggedTotalCost(factory).toFixed(2))
 const createSharedExpenseTotal = computed(() =>
   Number(
     createSharedExpenses.value
@@ -206,31 +190,26 @@ const createSummary = computed(() => ({
 }))
 
 const formBaggedCostPerTon = computed(() => getCostPerTon(defaultCosts.value, form.productType))
-const formBulkCostPerTon = computed(() => getBulkCostPerTon(defaultCosts.value, form.productType))
-const formBulkAllowed = computed(() => isBulkAllowedForProduct(form.productType))
 const formOutputTons = computed(() =>
   getOutputTons({
     baggedOutputTons: Number(form.baggedOutputTons),
-    bulkOutputTons: normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons))
+    bulkOutputTons: 0
   })
 )
 const formBaggedTotalCost = computed(() => getSaleTotal(Number(form.baggedOutputTons), formBaggedCostPerTon.value))
-const formBulkTotalCost = computed(() =>
-  getSaleTotal(normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons)), formBulkCostPerTon.value)
-)
 const formCostBreakdown = computed(() =>
   getProductionCostBreakdown(
     defaultCosts.value,
     form.productType,
     Number(form.baggedOutputTons),
-    normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons))
+    0
   )
 )
-const formTotalCost = computed(() => Number((formBaggedTotalCost.value + formBulkTotalCost.value).toFixed(2)))
+const formTotalCost = computed(() => Number(formBaggedTotalCost.value.toFixed(2)))
 const formUsedStoneTons = computed(() =>
   getUsedStoneTons({
     baggedOutputTons: Number(form.baggedOutputTons),
-    bulkOutputTons: normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons))
+    bulkOutputTons: 0
   })
 )
 const formBagCount = computed(() => getBagCount(Number(form.baggedOutputTons)))
@@ -290,7 +269,7 @@ const openEditModal = (row: Record<string, unknown>) => {
     factory: record.factory,
     productType: record.productType,
     baggedOutputTons: record.baggedOutputTons,
-    bulkOutputTons: normalizeBulkOutputTons(record.productType, record.bulkOutputTons),
+    bulkOutputTons: 0,
     incomingStoneTons: 0,
     usedStoneTons: 0,
     newBagCount: 0,
@@ -331,7 +310,7 @@ const saveRecord = () => {
           incomingStoneTons: getCreateFactoryUsedStoneTons(factory),
           usedStoneTons: getCreateFactoryUsedStoneTons(factory),
           baggedOutputTons: Number(state.baggedOutputTons),
-          bulkOutputTons: normalizeBulkOutputTons(state.productType, Number(state.bulkOutputTons)),
+          bulkOutputTons: 0,
           newBagCount: getCreateFactoryBagCount(factory),
           oldBagCount: 0,
           notes: state.notes.trim(),
@@ -377,7 +356,7 @@ const saveRecord = () => {
     incomingStoneTons: formUsedStoneTons.value,
     usedStoneTons: formUsedStoneTons.value,
     baggedOutputTons: Number(form.baggedOutputTons),
-    bulkOutputTons: normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons)),
+    bulkOutputTons: 0,
     newBagCount: formBagCount.value,
     oldBagCount: 0,
     notes: form.notes.trim(),
@@ -448,28 +427,6 @@ watch(
   { deep: true }
 )
 
-watch(
-  () => form.productType,
-  (productType) => {
-    if (!isBulkAllowedForProduct(productType)) {
-      form.bulkOutputTons = 0
-    }
-  }
-)
-
-watch(
-  createForms,
-  () => {
-    createFactories.forEach((factory) => {
-      const state = createForms[factory]
-
-      if (!isBulkAllowedForProduct(state.productType)) {
-        state.bulkOutputTons = 0
-      }
-    })
-  },
-  { deep: true }
-)
 </script>
 
 <template>
@@ -560,15 +517,6 @@ watch(
               required
             />
             <AppInput v-model="form.baggedOutputTons" type="number" min="0" step="0.01" label="Qoplik mahsulot (t)" />
-            <AppInput
-              v-model="form.bulkOutputTons"
-              type="number"
-              min="0"
-              step="0.01"
-              label="Rasipnoy mahsulot (t)"
-              :disabled="!formBulkAllowed"
-              :placeholder="formBulkAllowed ? '' : 'Mel faqat qoplik bo`ladi'"
-            />
             <div class="rounded-2xl bg-slate-50 px-4 py-3">
               <p class="text-xs text-slate-500">Avtomatik tosh</p>
               <p class="mt-1 text-base font-semibold text-slate-900">{{ formatTons(formUsedStoneTons) }}</p>
@@ -636,15 +584,6 @@ watch(
                   min="0"
                   step="0.01"
                   label="Qoplik mahsulot (t)"
-                />
-                <AppInput
-                  v-model="createForms[factory].bulkOutputTons"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  label="Rasipnoy mahsulot (t)"
-                  :disabled="!getCreateFactoryBulkAllowed(factory)"
-                  :placeholder="getCreateFactoryBulkAllowed(factory) ? '' : 'Mel faqat qoplik bo`ladi'"
                 />
                 <div class="rounded-2xl bg-white px-4 py-3">
                   <p class="text-xs text-slate-500">Avtomatik tosh</p>
@@ -733,16 +672,14 @@ watch(
       <section>
         <div class="mb-3 flex items-center justify-between">
           <h3 class="text-sm font-semibold text-slate-900">Avtomatik tannarx</h3>
-          <span class="data-chip">
-            {{ editingId ? (formBulkAllowed ? "Rasipnoyda ortib berish va qop yo'q" : 'Mel faqat qoplik bo`ladi') : "Har zavod blokida mahsulotga qarab hisoblanadi" }}
-          </span>
+          <span class="data-chip">Qoplik hisob</span>
         </div>
         <p class="mb-4 text-xs text-slate-500">
           Bu narxlar `Chiqimlar` sahifasidagi default sozlamalardan olinadi. Narx o'zgarsa kunlik hisob avtomatik qayta hisoblanadi.
         </p>
         <p class="mb-4 text-xs text-slate-500">Quyidagi narxlar `1 kg` uchun. Jami tannarx esa tonnaga qarab avtomatik ko'payadi.</p>
         <p class="mb-4 text-xs text-slate-500">
-          Norma: `1 tonna qoplik = 25 qop`, `1 tonna mahsulot = 1 tonna tosh`. Rasipnoyda qop ishlatilmaydi.
+          Norma: `1 tonna qoplik = 25 qop`, `1 tonna mahsulot = 1 tonna tosh`.
         </p>
         <div class="grid gap-3 md:grid-cols-3">
           <div v-for="item in costItems" :key="item.label" class="rounded-2xl bg-slate-50 px-4 py-3">
@@ -756,18 +693,10 @@ watch(
             <p class="text-xs text-slate-500">{{ form.productType }} qoplik 1 kg</p>
             <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(formBaggedCostPerTon) }}</p>
           </div>
-          <div :class="formBulkAllowed ? 'rounded-2xl bg-sky-50 px-4 py-3' : 'rounded-2xl bg-slate-100 px-4 py-3'">
-            <p :class="formBulkAllowed ? 'text-xs text-sky-700' : 'text-xs text-slate-500'">
-              {{ form.productType }} rasipnoy 1 kg
-            </p>
-            <p :class="formBulkAllowed ? 'mt-1 text-lg font-semibold text-sky-700' : 'mt-1 text-lg font-semibold text-slate-500'">
-              {{ formBulkAllowed ? formatSom(formBulkCostPerTon) : 'Yo`q' }}
-            </p>
-          </div>
         </div>
 
         <div v-else class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          Create holatda har bir zavod kartasi ichida mahsulot turiga qarab qoplik, rasipnoy va jami tannarx alohida hisoblanadi.
+          Create holatda har bir zavod kartasi ichida mahsulot va jami tannarx alohida hisoblanadi.
         </div>
       </section>
 
@@ -791,10 +720,6 @@ watch(
             <div class="flex items-center justify-between">
               <span class="text-slate-500">Qoplik jami tannarx</span>
               <strong class="text-slate-900">{{ formatSom(formBaggedTotalCost) }}</strong>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Rasipnoy jami tannarx</span>
-              <strong class="text-slate-900">{{ formBulkAllowed ? formatSom(formBulkTotalCost) : 'Yo`q' }}</strong>
             </div>
             <div class="flex items-center justify-between">
               <span class="text-slate-500">Ishchi puli</span>

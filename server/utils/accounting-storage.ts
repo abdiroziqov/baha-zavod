@@ -19,6 +19,7 @@ import type {
   MonthlyArchiveItem,
   MonthlyArchiveRecord,
   MonthlyArchiveSection,
+  OpeningBalanceRecord,
   OperationalExpense,
   PaymentMethod,
   PaymentRecord,
@@ -53,7 +54,7 @@ const factories: FactoryName[] = ['Tepa shpaklevka', 'Tepa kraska', 'Past shpakl
 const defaultFactory: FactoryName = 'Tepa shpaklevka'
 const productTypes: ProductType[] = ['Qum', 'Mel']
 const vehicleTypes: VehicleType[] = ['Howo', 'Kamaz']
-const shipmentTypes: ShipmentType[] = ['qoplik', 'rasipnoy']
+const shipmentTypes: ShipmentType[] = ['qoplik']
 const expenseCategories: ExpenseCategory[] = [
   'Ishchi',
   'Ovqat',
@@ -125,7 +126,7 @@ const asNumber = (value: unknown, fallback = 0) => {
 }
 const asString = (value: unknown, fallback = '') => (typeof value === 'string' ? value : fallback)
 const getOutputTons = (record: Pick<DailyFactoryRecord, 'baggedOutputTons' | 'bulkOutputTons'>) =>
-  Number((record.baggedOutputTons + record.bulkOutputTons).toFixed(2))
+  Number(record.baggedOutputTons.toFixed(2))
 const getUsedStoneTons = (record: Pick<DailyFactoryRecord, 'baggedOutputTons' | 'bulkOutputTons'>) =>
   Number((getOutputTons(record) * STONE_USAGE_PER_TON).toFixed(2))
 const getBagCount = (baggedOutputTons: number) => Math.round(Math.max(baggedOutputTons, 0) * BAGS_PER_TON)
@@ -452,6 +453,19 @@ const normalizeScaleCashEntry = (record: unknown): ScaleCashEntry => {
   }
 }
 
+const normalizeOpeningBalanceRecord = (record: unknown): OpeningBalanceRecord => {
+  const source = typeof record === 'object' && record ? (record as Partial<OpeningBalanceRecord>) : {}
+
+  return {
+    id: asString(source.id, createId('opening')),
+    date: asString(source.date, todayIso()),
+    factory: isFactory(source.factory) ? source.factory : defaultFactory,
+    stoneTons: Number(Math.max(asNumber(source.stoneTons), 0).toFixed(2)),
+    productTons: Number(Math.max(asNumber(source.productTons), 0).toFixed(2)),
+    notes: asString(source.notes)
+  }
+}
+
 const normalizeAuditLogRecord = (record: unknown): AuditLogRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<AuditLogRecord>) : {}
   const actorRole = source.actorRole === 'manager' || source.actorRole === 'operator' ? source.actorRole : 'admin'
@@ -482,6 +496,7 @@ const normalizeAuditLogRecord = (record: unknown): AuditLogRecord => {
 
 const buildSeedState = (): AccountingStateSnapshot => ({
   defaultCosts: clone(defaultCostProfile),
+  openingBalances: [],
   dailyRecords: (dailySource as unknown[]).map((record) => normalizeDailyRecord(record, defaultCostProfile)),
   incomingLoads: (loadsSource as unknown[]).map((record) => normalizeIncomingLoad(record)),
   scaleEntries: (scaleEntriesSource as unknown[]).map((record) => normalizeScaleEntry(record)),
@@ -505,6 +520,9 @@ export const normalizeAccountingState = (snapshot: unknown): AccountingStateSnap
 
   return {
     defaultCosts,
+    openingBalances: Array.isArray(source.openingBalances)
+      ? source.openingBalances.map((record) => normalizeOpeningBalanceRecord(record))
+      : [],
     dailyRecords: Array.isArray(source.dailyRecords)
       ? source.dailyRecords.map((record) => normalizeDailyRecord(record, defaultCosts))
       : [],

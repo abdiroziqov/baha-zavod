@@ -16,7 +16,6 @@ const salesColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
   { key: 'factory', label: 'Zavod' },
   { key: 'clientName', label: 'Klient' },
-  { key: 'shipmentType', label: 'Yuk turi' },
   { key: 'tons', label: 'Tonna', align: 'right' },
   { key: 'totalAmount', label: 'Jami', align: 'right' }
 ]
@@ -342,19 +341,12 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
     </article>
   </section>
 
-  <section class="grid gap-4 lg:grid-cols-3">
+  <section class="grid gap-4">
     <ChartCard
       title="Tushum trendi"
       subtitle="Sana bo`yicha sotuv summasi"
       type="line"
       :points="overallSummary.revenueTrend"
-      class="lg:col-span-2"
-    />
-    <ChartCard
-      title="Yuk turi"
-      subtitle="Qoplik va rasipnoy"
-      type="pie"
-      :points="overallSummary.shipmentSplit"
     />
   </section>
 
@@ -374,10 +366,6 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
       </header>
 
       <AppTable :columns="salesColumns" :rows="saleRows" empty-text="Sotuv yozuvlari topilmadi.">
-        <template #cell-shipmentType="{ value }">
-          <span class="data-chip capitalize">{{ value }}</span>
-        </template>
-
         <template #cell-tons="{ value }">
           {{ formatTons(Number(value)) }}
         </template>

@@ -404,7 +404,7 @@ const confirmOperationalReset = () => {
 
   <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
     <StatCard title="Kirim tosh" :value="formatTons(summary.totalIncomingTons)" subtitle="filtrlangan davr" />
-    <StatCard title="Mahsulot" :value="formatTons(summary.totalOutputTons)" subtitle="qoplik + rasipnoy" />
+    <StatCard title="Mahsulot" :value="formatTons(summary.totalOutputTons)" subtitle="qoplik" />
     <StatCard title="Tushum" :value="formatSom(summary.totalRevenue)" subtitle="sotuv bo`yicha" />
     <StatCard title="Chiqim" :value="formatSom(summary.extraExpensesTotal)" subtitle="qo'shimcha xarajat" />
     <StatCard title="Qarz" :value="formatSom(summary.totalDebt)" subtitle="ochiq qoldiq" />
@@ -433,9 +433,8 @@ const confirmOperationalReset = () => {
     />
   </section>
 
-  <section class="grid gap-4 lg:grid-cols-3">
-    <ChartCard title="Tushum trendi" subtitle="Sana bo`yicha" type="line" :points="summary.revenueTrend" class="lg:col-span-2" />
-    <ChartCard title="Yuk turi" subtitle="Qoplik va rasipnoy" type="pie" :points="summary.shipmentSplit" />
+  <section class="grid gap-4">
+    <ChartCard title="Tushum trendi" subtitle="Sana bo`yicha" type="line" :points="summary.revenueTrend" />
   </section>
 
   <section class="grid gap-4 lg:grid-cols-3">
@@ -653,7 +652,7 @@ const confirmOperationalReset = () => {
   >
     <div class="space-y-4">
       <p class="text-sm text-slate-600">
-        Qarzdorlar opening balance sifatida saqlanadi, qolgan operatsion yozuvlar o‘chiriladi.
+        Joriy davr arxivlanadi. Tosh, tayyor mahsulot, klient qarzi va supplier balansi yangi davrga boshlang'ich qoldiq sifatida ko'chadi.
       </p>
 
       <AppInput v-model="resetStartDate" type="date" label="Yangi davr sanasi" />
@@ -667,7 +666,7 @@ const confirmOperationalReset = () => {
     <template #footer>
       <div class="flex justify-end gap-2">
         <button type="button" class="btn-secondary" @click="resetModalOpen = false">{{ t('Bekor qilish') }}</button>
-        <button type="button" class="btn-danger" @click="confirmOperationalReset">{{ t('Tozalashni boshlash') }}</button>
+        <button type="button" class="btn-danger" @click="confirmOperationalReset">{{ t('Oy yopish') }}</button>
       </div>
     </template>
   </AppModal>

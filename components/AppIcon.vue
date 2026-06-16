@@ -1,20 +1,15 @@
 <script setup lang="ts">
 type IconName =
   | 'dashboard'
-  | 'analysis'
   | 'audit'
   | 'barter'
-  | 'quick-entry'
-  | 'manual-entry'
   | 'production'
   | 'raw-materials'
-  | 'suppliers'
   | 'inventory'
   | 'sales'
   | 'debtors'
   | 'expenses'
   | 'reports'
-  | 'clients'
 
 interface Props {
   name: IconName
@@ -38,23 +33,6 @@ defineProps<Props>()
     <rect x="13" y="3" width="8" height="5" rx="2" />
     <rect x="13" y="10" width="8" height="11" rx="2" />
     <rect x="3" y="13" width="8" height="8" rx="2" />
-  </svg>
-
-  <svg
-    v-else-if="name === 'analysis'"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.8"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M4 20h16" />
-    <path d="M7 16v-5" />
-    <path d="M12 16V8" />
-    <path d="M17 16V5" />
-    <path d="M5 7.5 9 4l3 2 6-3" />
   </svg>
 
   <svg
@@ -91,38 +69,6 @@ defineProps<Props>()
   </svg>
 
   <svg
-    v-else-if="name === 'quick-entry'"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.8"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M12 5v14" />
-    <path d="M5 12h14" />
-    <rect x="3" y="3" width="18" height="18" rx="4" />
-  </svg>
-
-  <svg
-    v-else-if="name === 'manual-entry'"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.8"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-  >
-    <rect x="3" y="6" width="18" height="12" rx="3" />
-    <path d="M7 10h10" />
-    <path d="M7 14h4" />
-    <path d="M17 3v4" />
-    <path d="M7 18v3" />
-  </svg>
-
-  <svg
     v-else-if="name === 'production'"
     viewBox="0 0 24 24"
     fill="none"
@@ -153,24 +99,6 @@ defineProps<Props>()
     <path d="M3 16.5 12 4l9 12.5" />
     <path d="M6.5 16.5h11" />
     <path d="M5 20h14" />
-  </svg>
-
-  <svg
-    v-else-if="name === 'suppliers'"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.8"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M3 7h11v8H3z" />
-    <path d="M14 10h3l4 3v2h-2" />
-    <circle cx="7.5" cy="18" r="2" />
-    <circle cx="17.5" cy="18" r="2" />
-    <path d="M14 18H9.5" />
-    <path d="M21 15v3" />
   </svg>
 
   <svg

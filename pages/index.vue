@@ -9,7 +9,7 @@ const runtimeConfig = useRuntimeConfig()
 const products = [
   {
     title: 'Qum',
-    text: "Qoplik va rasipnoy ko'rinishida ishlab chiqariladi. Kunlik yuk chiqimi va balans nazorat qilinadi."
+    text: "Qoplik formatda ishlab chiqariladi. Kunlik yuk chiqimi va balans nazorat qilinadi."
   },
   {
     title: 'Mel',

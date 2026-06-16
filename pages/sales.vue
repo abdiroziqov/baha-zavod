@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { FactoryName, PaymentMethod, SaleRecord, ShipmentType } from '~/types/accounting'
+import type { FactoryName, PaymentMethod, SaleRecord } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
-import { isBulkAllowedForProduct, normalizeShipmentTypeForProduct } from '~/composables/useProductRules'
 
 definePageMeta({
   layout: 'dashboard'
@@ -46,7 +45,6 @@ const createFormState = (): Omit<
 const filters = reactive({
   startDate: '',
   endDate: '',
-  shipmentType: '',
   status: '',
   clientName: ''
 })
@@ -63,7 +61,6 @@ const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
   { key: 'clientName', label: 'Klient' },
   { key: 'productName', label: 'Mahsulot' },
-  { key: 'shipmentType', label: 'Yuk turi' },
   { key: 'tons', label: 'Tonna', align: 'right' },
   { key: 'pricePerTon', label: 'Narx/kg', align: 'right' },
   { key: 'paymentMethod', label: 'To`lov turi' },
@@ -80,10 +77,6 @@ const filteredSales = computed(() =>
       }
 
       if (filters.endDate && record.date > filters.endDate) {
-        return false
-      }
-
-      if (filters.shipmentType && record.shipmentType !== filters.shipmentType) {
         return false
       }
 
@@ -129,7 +122,6 @@ const clientSelectOptions = computed(() => {
 })
 
 const filterClientOptions = computed(() => clientOptions.value)
-const formBulkAllowed = computed(() => isBulkAllowedForProduct(form.productName))
 const activeClientProfile = computed(() => getClientProfile(form.clientName))
 const activeClientSummary = computed(() => activeClientProfile.value.summary)
 const activeClientContact = computed(() => activeClientProfile.value.contact)
@@ -220,7 +212,6 @@ const buildSalesSheets = () => {
         { key: 'factory', label: 'Zavod' },
         { key: 'clientName', label: 'Klient' },
         { key: 'productName', label: 'Mahsulot' },
-        { key: 'shipmentType', label: 'Yuk turi' },
         { key: 'tons', label: 'Tonna' },
         { key: 'pricePerTon', label: 'Narx / kg' },
         { key: 'totalAmount', label: 'Jami summa' },
@@ -237,7 +228,6 @@ const buildSalesSheets = () => {
         factory: record.factory,
         clientName: record.clientName,
         productName: record.productName,
-        shipmentType: record.shipmentType,
         tons: Number(record.tons.toFixed(2)),
         pricePerTon: Math.round(record.pricePerTon),
         totalAmount: Math.round(record.totalAmount),
@@ -339,7 +329,7 @@ const openEditModal = (row: Record<string, unknown>) => {
     factory: record.factory,
     clientName: record.clientName,
     productName: record.productName,
-    shipmentType: normalizeShipmentTypeForProduct(record.productName, record.shipmentType),
+    shipmentType: 'qoplik',
     tons: record.tons,
     pricePerTon: record.pricePerTon,
     paidAmount: record.paidAmount,
@@ -365,7 +355,7 @@ const saveSale = () => {
     factory: form.factory as FactoryName,
     clientName: form.clientName.trim(),
     productName: form.productName.trim() || 'Qum',
-    shipmentType: normalizeShipmentTypeForProduct(form.productName, form.shipmentType as ShipmentType),
+    shipmentType: 'qoplik' as const,
     tons: Number(form.tons),
     pricePerTon: Number(form.pricePerTon),
     paidAmount: Number(form.paidAmount),
@@ -436,7 +426,6 @@ const closeDelete = () => {
 const clearFilters = () => {
   filters.startDate = ''
   filters.endDate = ''
-  filters.shipmentType = ''
   filters.status = ''
   filters.clientName = ''
 }
@@ -447,17 +436,11 @@ const applyLastSaleDefaults = () => {
   }
 
   form.productName = activeClientLastSale.value.productName
-  form.shipmentType = normalizeShipmentTypeForProduct(activeClientLastSale.value.productName, activeClientLastSale.value.shipmentType)
+  form.shipmentType = 'qoplik'
   form.pricePerTon = activeClientLastSale.value.pricePerTon
   form.paymentMethod = activeClientLastSale.value.paymentMethod
 }
 
-watch(
-  () => form.productName,
-  (productName) => {
-    form.shipmentType = normalizeShipmentTypeForProduct(productName, form.shipmentType as ShipmentType)
-  }
-)
 </script>
 
 <template>
@@ -490,18 +473,9 @@ watch(
         <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">{{ t('Hammasi') }}</button>
       </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-5">
+      <div class="mt-4 grid gap-3 md:grid-cols-4">
         <AppInput v-model="filters.startDate" type="date" label="Boshlanish sanasi" />
         <AppInput v-model="filters.endDate" type="date" label="Tugash sanasi" />
-        <AppSelect
-          v-model="filters.shipmentType"
-          label="Yuk turi"
-          :options="[
-            { label: 'Qoplik', value: 'qoplik' },
-            { label: 'Rasipnoy', value: 'rasipnoy' }
-          ]"
-          placeholder="Hammasi"
-        />
         <AppSelect
           v-model="filters.status"
           label="Holat"
@@ -519,8 +493,7 @@ watch(
 
     <article class="panel p-4">
       <p class="text-sm font-semibold text-slate-900">{{ t('Klient tanlash') }}</p>
-      <p class="mt-1 text-xs text-slate-500">{{ t('Yangi klientni avval `Klientlar` sahifasida qo`shing, keyin bu yerda tanlaysiz.') }}</p>
-      <NuxtLink to="/users" class="btn-secondary mt-4 w-full">{{ t('Klientlar sahifasi') }}</NuxtLink>
+      <p class="mt-1 text-xs text-slate-500">{{ t("Yangi klient nomini sotuv qo'shish formasida yozing. Tizim o'zi ro'yxatga qo'shadi.") }}</p>
       <div class="mt-4 flex flex-wrap gap-2">
         <span v-for="client in clientDirectory.slice(0, 8)" :key="client.id" class="data-chip">
           {{ client.clientName }}
@@ -531,10 +504,6 @@ watch(
 
   <section class="panel p-5">
     <AppTable :columns="columns" :rows="tableRows" empty-text="Sotuv yozuvlari topilmadi.">
-      <template #cell-shipmentType="{ value }">
-        <span class="data-chip capitalize">{{ value }}</span>
-      </template>
-
       <template #cell-tons="{ value }">
         {{ formatTons(Number(value)) }}
       </template>
@@ -575,7 +544,7 @@ watch(
       <AppInput v-model="form.date" type="date" label="Sana" :invalid="Boolean(formError) && !form.date" required />
       <AppInput v-model="form.time" type="time" label="Soat" />
 
-      <div class="md:col-span-2 grid gap-3 md:grid-cols-[1fr_auto]">
+      <div class="md:col-span-2">
         <AppSelect
           v-model="form.clientName"
           label="Klient"
@@ -586,9 +555,6 @@ watch(
           :invalid="Boolean(formError) && !form.clientName.trim()"
           required
         />
-        <div class="flex items-end">
-          <NuxtLink to="/users" class="btn-secondary w-full">{{ t("Klient qo'shish") }}</NuxtLink>
-        </div>
       </div>
 
       <AppSelect
@@ -596,18 +562,6 @@ watch(
         label="Mahsulot turi"
         :options="productTypes.map((item) => ({ label: item, value: item }))"
         :invalid="Boolean(formError) && !form.productName"
-        required
-      />
-      <AppSelect
-        v-model="form.shipmentType"
-        label="Yuk turi"
-        :options="formBulkAllowed
-          ? [
-              { label: 'Qoplik', value: 'qoplik' },
-              { label: 'Rasipnoy', value: 'rasipnoy' }
-            ]
-          : [{ label: 'Qoplik', value: 'qoplik' }]"
-        :invalid="Boolean(formError) && !form.shipmentType"
         required
       />
       <AppInput v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" :invalid="Boolean(formError) && Number(form.tons) <= 0" required />
@@ -636,8 +590,6 @@ watch(
         :invalid="Boolean(formError) && !form.paymentMethod"
         required
       />
-
-      <p v-if="!formBulkAllowed" class="text-xs text-amber-700 md:col-span-2">Mel faqat qoplik sotiladi.</p>
 
       <div v-if="activeClientSummary" class="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -713,12 +665,11 @@ watch(
           <div
             v-for="sale in activeClientSales"
             :key="sale.id"
-            class="grid gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 md:grid-cols-[1fr_0.9fr_0.9fr_0.8fr_0.9fr_1fr]"
+            class="grid gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 md:grid-cols-[1fr_0.9fr_0.9fr_0.9fr_1fr]"
           >
             <span class="font-medium text-slate-900">{{ formatDate(sale.date) }}</span>
             <span>{{ sale.factory }}</span>
             <span>{{ sale.productName }}</span>
-            <span class="capitalize">{{ sale.shipmentType }}</span>
             <span>{{ formatTons(sale.tons) }}</span>
             <span :class="['font-semibold', balanceToneClass(sale.balanceType)]">
               {{ balanceLabel(sale.balanceType) }}: {{ formatSom(sale.balanceAmount) }}

@@ -28,6 +28,7 @@ import type {
   MonthlyArchiveItem,
   MonthlyArchiveRecord,
   MonthlyArchiveSection,
+  OpeningBalanceRecord,
   OperationalExpense,
   PaymentRecord,
   PaymentMethod,
@@ -93,7 +94,7 @@ const workerPayoutModeByFactory: Record<FactoryName, 'daily' | 'monthly'> = {
 }
 export const productTypes: ProductType[] = ['Qum', 'Mel']
 export const vehicleTypes: VehicleType[] = ['Howo', 'Kamaz']
-export const shipmentTypes: ShipmentType[] = ['qoplik', 'rasipnoy']
+export const shipmentTypes: ShipmentType[] = ['qoplik']
 export const expenseCategories: ExpenseCategory[] = [
   'Ishchi',
   'Ovqat',
@@ -182,8 +183,24 @@ const getNextIsoDate = (value: string) => {
   return nextDate.toISOString().slice(0, 10)
 }
 
+const getPreviousIsoDate = (value: string) => {
+  if (!value) {
+    return new Date().toISOString().slice(0, 10)
+  }
+
+  const [year, month, day] = value.split('-').map(Number)
+
+  if (!year || !month || !day) {
+    return value
+  }
+
+  const previousDate = new Date(Date.UTC(year, month - 1, day))
+  previousDate.setUTCDate(previousDate.getUTCDate() - 1)
+  return previousDate.toISOString().slice(0, 10)
+}
+
 export const getOutputTons = (record: Pick<DailyFactoryRecord, 'baggedOutputTons' | 'bulkOutputTons'>) =>
-  Number((record.baggedOutputTons + record.bulkOutputTons).toFixed(2))
+  Number(record.baggedOutputTons.toFixed(2))
 
 export const getUsedStoneTons = (record: Pick<DailyFactoryRecord, 'baggedOutputTons' | 'bulkOutputTons'>) =>
   Number((getOutputTons(record) * STONE_USAGE_PER_TON).toFixed(2))
@@ -235,25 +252,9 @@ export const getCostPerTon = (profile: CostProfile, productType: ProductType) =>
     ).toFixed(2)
   )
 
-export const getBulkCostPerTon = (profile: CostProfile, productType: ProductType) =>
-  Number(
-    (
-      getWorkerCostPerTon(profile, productType) +
-      profile.marketCostPerTon +
-      profile.foodCostPerTon +
-      profile.supervisorCostPerTon +
-      profile.electricityCostPerTon +
-      profile.stoneCostPerTon
-    )
-      .toFixed(2)
-  )
-
 export const getProductionCostOnly = (record: DailyFactoryRecord) =>
   Number(
-    (
-      getKilograms(record.baggedOutputTons) * getCostPerTon(record, record.productType) +
-      getKilograms(record.bulkOutputTons) * getBulkCostPerTon(record, record.productType)
-    ).toFixed(2)
+    (getKilograms(record.baggedOutputTons) * getCostPerTon(record, record.productType)).toFixed(2)
   )
 
 export const getAverageProductionCostPerTon = (record: DailyFactoryRecord) => {
@@ -530,6 +531,15 @@ const normalizeMonthlyArchiveRecord = (record: Partial<MonthlyArchiveRecord>): M
   items: Array.isArray(record.items) ? record.items.map((item) => normalizeMonthlyArchiveItem(item)) : []
 })
 
+const normalizeOpeningBalanceRecord = (record: Partial<OpeningBalanceRecord>): OpeningBalanceRecord => ({
+  id: record.id ?? createId('opening'),
+  date: record.date ?? new Date().toISOString().slice(0, 10),
+  factory: record.factory ?? defaultFactory,
+  stoneTons: Number(Math.max(record.stoneTons ?? 0, 0).toFixed(2)),
+  productTons: Number(Math.max(record.productTons ?? 0, 0).toFixed(2)),
+  notes: record.notes?.trim() ?? ''
+})
+
 const buildCostBreakdown = (profile: CostProfile) => {
   return [
     { label: 'Qum ishchi', value: profile.sandWorkerCostPerTon, color: '#16a34a' },
@@ -547,6 +557,10 @@ const buildCostBreakdown = (profile: CostProfile) => {
 export const useFactoryAccounting = () => {
   const { hasRole, isAdmin, user } = useAuth()
   const defaultCosts = useState<CostProfile>('accounting:default-costs', () => clone(defaultCostProfile))
+  const openingBalances = useState<OpeningBalanceRecord[]>(
+    'accounting:opening-balances',
+    () => []
+  )
   const contacts = useState<ContactRecord[]>(
     'accounting:contacts',
     () => clone(seedContacts).map((record) => normalizeContactRecord(record))
@@ -610,6 +624,7 @@ export const useFactoryAccounting = () => {
 
   const latestDate = computed(() => {
     const dates = [
+      ...openingBalances.value.map((record) => record.date),
       ...dailyRecords.value.map((record) => record.date),
       ...incomingLoads.value.map((record) => record.date),
       ...manualDebts.value.map((record) => record.date),
@@ -637,16 +652,17 @@ export const useFactoryAccounting = () => {
 
     return {
       overall: buildGuide([
+        ...openingBalances.value.map((record) => record.date),
         ...dailyRecords.value.map((record) => record.date),
         ...incomingLoads.value.map((record) => record.date),
         ...manualDebts.value.map((record) => record.date),
         ...payments.value.map((record) => record.date),
         ...barterRecords.value.map((record) => record.date),
         ...sales.value.map((record) => record.date),
-        ...expenses.value.map((record) => record.date),
-        ...scaleCashEntries.value.map((record) => record.date)
+        ...expenses.value.map((record) => record.date)
       ]),
       dashboard: buildGuide([
+        ...openingBalances.value.map((record) => record.date),
         ...dailyRecords.value.map((record) => record.date),
         ...incomingLoads.value.map((record) => record.date),
         ...sales.value.map((record) => record.date),
@@ -655,19 +671,13 @@ export const useFactoryAccounting = () => {
         ...payments.value.map((record) => record.date),
         ...barterRecords.value.map((record) => record.date)
       ]),
-      analysis: buildGuide([
-        ...dailyRecords.value.map((record) => record.date),
-        ...incomingLoads.value.map((record) => record.date),
-        ...sales.value.map((record) => record.date),
-        ...expenses.value.map((record) => record.date),
-        ...manualDebts.value.map((record) => record.date),
-        ...payments.value.map((record) => record.date),
-        ...barterRecords.value.map((record) => record.date)
+      production: buildGuide([
+        ...openingBalances.value.map((record) => record.date),
+        ...dailyRecords.value.map((record) => record.date)
       ]),
-      production: buildGuide(dailyRecords.value.map((record) => record.date)),
       rawMaterials: buildGuide(incomingLoads.value.map((record) => record.date)),
-      suppliers: buildGuide(incomingLoads.value.map((record) => record.date)),
       inventory: buildGuide([
+        ...openingBalances.value.map((record) => record.date),
         ...dailyRecords.value.map((record) => record.date),
         ...incomingLoads.value.map((record) => record.date),
         ...sales.value.map((record) => record.date)
@@ -679,6 +689,7 @@ export const useFactoryAccounting = () => {
       ]),
       expenses: buildGuide(expenses.value.map((record) => record.date)),
       reports: buildGuide([
+        ...openingBalances.value.map((record) => record.date),
         ...dailyRecords.value.map((record) => record.date),
         ...incomingLoads.value.map((record) => record.date),
         ...sales.value.map((record) => record.date),
@@ -687,24 +698,7 @@ export const useFactoryAccounting = () => {
         ...payments.value.map((record) => record.date),
         ...barterRecords.value.map((record) => record.date)
       ]),
-      users: buildGuide(
-        contacts.value
-          .map((contact) => contact.createdAt?.slice(0, 10) ?? '')
-          .filter(Boolean)
-      ),
-      manualEntry: buildGuide([
-        ...payments.value.map((record) => record.date),
-        ...expenses.value.map((record) => record.date)
-      ]),
-      quickEntry: buildGuide([
-        ...dailyRecords.value.map((record) => record.date),
-        ...incomingLoads.value.map((record) => record.date),
-        ...sales.value.map((record) => record.date),
-        ...expenses.value.map((record) => record.date),
-        ...payments.value.map((record) => record.date)
-      ]),
-      barter: buildGuide(barterRecords.value.map((record) => record.date)),
-      scale: buildGuide(scaleCashEntries.value.map((record) => record.date))
+      barter: buildGuide(barterRecords.value.map((record) => record.date))
     }
   })
 
@@ -1222,7 +1216,6 @@ export const useFactoryAccounting = () => {
       `Soat: ${sale.time || '-'}`,
       `Zavod: ${sale.factory}`,
       `Mahsulot: ${sale.productName}`,
-      `Yuk turi: ${sale.shipmentType}`,
       `Miqdor: ${sale.tons} tonna`,
       `Narx: ${formatSomValue(sale.pricePerTon)}/kg`,
       `Jami: ${formatSomValue(sale.totalAmount)}`,
@@ -1856,7 +1849,7 @@ export const useFactoryAccounting = () => {
     payments.value.unshift(record)
     appendAuditLog({
       action: 'add',
-      section: 'Pul Kiritish',
+      section: 'Qarzdorlar',
       entityType: 'payment',
       recordId: record.id,
       summary: `${record.clientName} uchun to'lov qo'shildi`,
@@ -1879,7 +1872,7 @@ export const useFactoryAccounting = () => {
       payments.value[index] = record
       appendAuditLog({
         action: 'update',
-        section: 'Pul Kiritish',
+        section: 'Qarzdorlar',
         entityType: 'payment',
         recordId: record.id,
         summary: `${record.clientName} uchun to'lov tahrirlandi`,
@@ -1900,7 +1893,7 @@ export const useFactoryAccounting = () => {
     if (existing) {
       appendAuditLog({
         action: 'delete',
-        section: 'Pul Kiritish',
+        section: 'Qarzdorlar',
         entityType: 'payment',
         recordId: existing.id,
         summary: `${existing.clientName} uchun to'lov o'chirildi`,
@@ -2047,11 +2040,72 @@ export const useFactoryAccounting = () => {
     }
 
     const effectiveStartDate = startDate || new Date().toISOString().slice(0, 10)
+    const archiveEndDate = getPreviousIsoDate(effectiveStartDate)
+    const archiveStartDate = [
+      ...openingBalances.value.map((record) => record.date),
+      ...dailyRecords.value.map((record) => record.date),
+      ...incomingLoads.value.map((record) => record.date),
+      ...sales.value.map((record) => record.date),
+      ...manualDebts.value.map((record) => record.date),
+      ...payments.value.map((record) => record.date),
+      ...barterRecords.value.map((record) => record.date),
+      ...expenses.value.map((record) => record.date)
+    ].filter(Boolean).sort()[0] ?? effectiveStartDate
+    const closingSummary = buildSummary('', archiveEndDate)
     const preservedDebtSummaries = debtorSummaries.value.filter((record) => record.totalDebt > 0)
+    const preservedSupplierSummaries = supplierSummaries.value.filter((record) => record.balanceAmount > 0)
     const preservedClientKeys = new Set(
       preservedDebtSummaries.map((record) => normalizeClientName(record.clientName))
     )
+    const preservedOpeningBalances = closingSummary.factoryBreakdown
+      .filter((record) => record.stoneBalance > 0 || record.productBalance > 0)
+      .map((record) =>
+        normalizeOpeningBalanceRecord({
+          id: createId('opening'),
+          date: effectiveStartDate,
+          factory: record.factory,
+          stoneTons: record.stoneBalance,
+          productTons: record.productBalance,
+          notes: `${effectiveStartDate} uchun boshlang'ich qoldiq`
+        })
+      )
+    const preservedSupplierLoads = preservedSupplierSummaries.map((record) =>
+      normalizeIncomingLoadRecord({
+        id: createId('load'),
+        date: effectiveStartDate,
+        factory: record.lastFactory || '',
+        vehicleType: 'Howo',
+        tons: 0,
+        supplier: record.supplierName,
+        pricePerTon: 0,
+        totalAmount: record.balanceType === 'bizdan_qarz' ? record.balanceAmount : 0,
+        paidAmount: record.balanceType === 'bizga_qarz' ? record.balanceAmount : 0,
+        notes: `${effectiveStartDate} uchun supplier opening balance`
+      }, 0, record.balanceType === 'bizga_qarz' ? record.balanceAmount : 0)
+    )
+    const archiveRecord = normalizeMonthlyArchiveRecord({
+      id: createId('archive'),
+      title: `${archiveStartDate} - ${archiveEndDate} oy yopish`,
+      startDate: archiveStartDate,
+      endDate: archiveEndDate,
+      factoryScope: 'combined',
+      producedTons: closingSummary.totalOutputTons,
+      shippedTons: closingSummary.totalSoldTons,
+      stoneLoadSummary: `Tosh qoldiq: ${closingSummary.remainingStoneTons} t, mahsulot qoldiq: ${closingSummary.remainingProductTons} t`,
+      stonePaymentTotal: closingSummary.totalIncomingAmount,
+      incomingMoneyTotal: closingSummary.moneyInTotal,
+      declaredExpenseTotal: closingSummary.totalCost,
+      declaredProfitTotal: closingSummary.totalProfit,
+      notes: `${effectiveStartDate} dan yangi davr ochildi. Qoldiqlar avtomatik ko'chirildi.`,
+      items: [
+        { label: 'Tosh qoldiq', amount: closingSummary.remainingStoneTons, section: 'note', note: 'Yangi davrga opening balance' },
+        { label: 'Mahsulot qoldiq', amount: closingSummary.remainingProductTons, section: 'note', note: 'Yangi davrga opening balance' },
+        { label: 'Klient qarzi', amount: preservedDebtSummaries.reduce((sum, record) => sum + record.totalDebt, 0), section: 'note', note: 'Manual debt opening' },
+        { label: 'Supplier balansi', amount: preservedSupplierSummaries.reduce((sum, record) => sum + record.balanceAmount, 0), section: 'note', note: 'Tosh kirimi opening' }
+      ]
+    })
     const before = {
+      openingBalances: openingBalances.value.length,
       dailyRecords: dailyRecords.value.length,
       incomingLoads: incomingLoads.value.length,
       sales: sales.value.length,
@@ -2063,6 +2117,8 @@ export const useFactoryAccounting = () => {
       scaleCashEntries: scaleCashEntries.value.length,
       monthlyArchiveRecords: monthlyArchiveRecords.value.length,
       reminders: reminders.value.length,
+      openingBalanceCount: preservedOpeningBalances.length,
+      supplierOpeningCount: preservedSupplierLoads.length,
       totalDebtors: preservedDebtSummaries.length,
       totalDebtAmount: Number(
         preservedDebtSummaries.reduce((sum, record) => sum + record.totalDebt, 0).toFixed(2)
@@ -2081,8 +2137,9 @@ export const useFactoryAccounting = () => {
       })
     )
 
+    openingBalances.value = preservedOpeningBalances
     dailyRecords.value = []
-    incomingLoads.value = []
+    incomingLoads.value = preservedSupplierLoads
     scaleEntries.value = []
     scaleSyncMeta.value = normalizeScaleSyncMeta()
     scaleCashEntries.value = []
@@ -2090,7 +2147,7 @@ export const useFactoryAccounting = () => {
     payments.value = []
     barterRecords.value = []
     expenses.value = []
-    monthlyArchiveRecords.value = []
+    monthlyArchiveRecords.value = [archiveRecord, ...monthlyArchiveRecords.value]
     manualDebts.value = preservedManualDebts
     reminders.value = reminders.value.filter((record) => preservedClientKeys.has(normalizeClientName(record.clientName)))
     auditLogs.value = []
@@ -2105,6 +2162,9 @@ export const useFactoryAccounting = () => {
       after: {
         startDate: effectiveStartDate,
         preservedDebtors: preservedManualDebts.length,
+        preservedOpenings: preservedOpeningBalances.length,
+        preservedSuppliers: preservedSupplierLoads.length,
+        archiveId: archiveRecord.id,
         preservedDebtAmount: Number(
           preservedManualDebts.reduce((sum, record) => sum + record.amount, 0).toFixed(2)
         )
@@ -2157,28 +2217,24 @@ export const useFactoryAccounting = () => {
       []
     )
 
-    const totalIncomingTons = Number(loads.reduce((sum, record) => sum + record.tons, 0).toFixed(2))
+    const opening = openingBalances.value.filter(
+      (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
+    )
+    const totalOpeningStoneTons = Number(opening.reduce((sum, record) => sum + record.stoneTons, 0).toFixed(2))
+    const totalOpeningProductTons = Number(opening.reduce((sum, record) => sum + record.productTons, 0).toFixed(2))
+    const totalIncomingTons = Number((loads.reduce((sum, record) => sum + record.tons, 0) + totalOpeningStoneTons).toFixed(2))
+    const totalIncomingAmount = Number(loads.reduce((sum, record) => sum + record.totalAmount, 0).toFixed(2))
     const totalUsedStoneTons = Number(daily.reduce((sum, record) => sum + record.usedStoneTons, 0).toFixed(2))
-    const totalOutputTons = Number(daily.reduce((sum, record) => sum + getOutputTons(record), 0).toFixed(2))
-    const totalBaggedTons = Number(daily.reduce((sum, record) => sum + record.baggedOutputTons, 0).toFixed(2))
-    const totalBulkTons = Number(daily.reduce((sum, record) => sum + record.bulkOutputTons, 0).toFixed(2))
-    const totalSoldBaggedTons = Number(
-      salesRecords
-        .filter((record) => record.shipmentType === 'qoplik')
-        .reduce((sum, record) => sum + record.tons, 0)
-        .toFixed(2)
-    )
-    const totalSoldBulkTons = Number(
-      salesRecords
-        .filter((record) => record.shipmentType === 'rasipnoy')
-        .reduce((sum, record) => sum + record.tons, 0)
-        .toFixed(2)
-    )
+    const totalOutputTons = Number((daily.reduce((sum, record) => sum + getOutputTons(record), 0) + totalOpeningProductTons).toFixed(2))
+    const totalBaggedTons = Number((daily.reduce((sum, record) => sum + record.baggedOutputTons, 0) + totalOpeningProductTons).toFixed(2))
+    const totalBulkTons = 0
+    const totalSoldBaggedTons = Number(salesRecords.reduce((sum, record) => sum + record.tons, 0).toFixed(2))
+    const totalSoldBulkTons = 0
     const totalNewBags = daily.reduce((sum, record) => sum + record.newBagCount, 0)
     const totalOldBags = daily.reduce((sum, record) => sum + record.oldBagCount, 0)
     const remainingStoneTons = Number((totalIncomingTons - totalUsedStoneTons).toFixed(2))
     const remainingBaggedTons = Number((totalBaggedTons - totalSoldBaggedTons).toFixed(2))
-    const remainingBulkTons = Number((totalBulkTons - totalSoldBulkTons).toFixed(2))
+    const remainingBulkTons = 0
     const productionCost = Number(daily.reduce((sum, record) => sum + getProductionCostOnly(record), 0).toFixed(2))
     const extraExpensesTotal = Number(expenseRecords.reduce((sum, record) => sum + record.amount, 0).toFixed(2))
     const totalCost = Number((productionCost + extraExpensesTotal).toFixed(2))
@@ -2263,10 +2319,7 @@ export const useFactoryAccounting = () => {
             )
             .slice()
             .sort(sortByDateDesc)[0] ?? defaultCosts.value
-        const baseCostPerKg =
-          sale.shipmentType === 'qoplik'
-            ? getCostPerTon(profileRecord, sale.productName as ProductType)
-            : getBulkCostPerTon(profileRecord, sale.productName as ProductType)
+        const baseCostPerKg = getCostPerTon(profileRecord, sale.productName as ProductType)
         const estimatedCost = getSaleTotal(sale.tons, baseCostPerKg)
         const allocatedExpenses = roundAmount(sale.tons * expensePerTonByFactory[sale.factory])
         const estimatedProfit = roundAmount(sale.totalAmount - estimatedCost - allocatedExpenses)
@@ -2328,26 +2381,19 @@ export const useFactoryAccounting = () => {
       .map((factoryName) => {
         const factoryDaily = daily.filter((record) => record.factory === factoryName)
         const factoryLoads = loads.filter((record) => record.factory === factoryName)
+        const factoryOpening = opening.filter((record) => record.factory === factoryName)
         const factorySales = salesRecords.filter((record) => record.factory === factoryName)
         const factoryExpenses = expenseRecords.filter((record) => record.factory === factoryName)
-        const incomingTons = Number(factoryLoads.reduce((sum, record) => sum + record.tons, 0).toFixed(2))
+        const openingStoneTons = Number(factoryOpening.reduce((sum, record) => sum + record.stoneTons, 0).toFixed(2))
+        const openingProductTons = Number(factoryOpening.reduce((sum, record) => sum + record.productTons, 0).toFixed(2))
+        const incomingTons = Number((factoryLoads.reduce((sum, record) => sum + record.tons, 0) + openingStoneTons).toFixed(2))
         const usedStoneTons = Number(factoryDaily.reduce((sum, record) => sum + record.usedStoneTons, 0).toFixed(2))
-        const outputTons = Number(factoryDaily.reduce((sum, record) => sum + getOutputTons(record), 0).toFixed(2))
-        const baggedOutputTons = Number(factoryDaily.reduce((sum, record) => sum + record.baggedOutputTons, 0).toFixed(2))
-        const bulkOutputTons = Number(factoryDaily.reduce((sum, record) => sum + record.bulkOutputTons, 0).toFixed(2))
+        const outputTons = Number((factoryDaily.reduce((sum, record) => sum + getOutputTons(record), 0) + openingProductTons).toFixed(2))
+        const baggedOutputTons = Number((factoryDaily.reduce((sum, record) => sum + record.baggedOutputTons, 0) + openingProductTons).toFixed(2))
+        const bulkOutputTons = 0
         const soldTons = Number(factorySales.reduce((sum, record) => sum + record.tons, 0).toFixed(2))
-        const soldBaggedTons = Number(
-          factorySales
-            .filter((record) => record.shipmentType === 'qoplik')
-            .reduce((sum, record) => sum + record.tons, 0)
-            .toFixed(2)
-        )
-        const soldBulkTons = Number(
-          factorySales
-            .filter((record) => record.shipmentType === 'rasipnoy')
-            .reduce((sum, record) => sum + record.tons, 0)
-            .toFixed(2)
-        )
+        const soldBaggedTons = soldTons
+        const soldBulkTons = 0
         const revenue = Number(factorySales.reduce((sum, record) => sum + record.totalAmount, 0).toFixed(2))
         const cost = Number(
           (
@@ -2359,7 +2405,7 @@ export const useFactoryAccounting = () => {
         const profit = Number((revenue - cost).toFixed(2))
         const stoneBalance = Number((incomingTons - usedStoneTons).toFixed(2))
         const remainingBaggedTons = Number((baggedOutputTons - soldBaggedTons).toFixed(2))
-        const remainingBulkTons = Number((bulkOutputTons - soldBulkTons).toFixed(2))
+        const remainingBulkTons = 0
         const productBalance = Number((outputTons - soldTons).toFixed(2))
 
         return {
@@ -2406,17 +2452,6 @@ export const useFactoryAccounting = () => {
       }, [])
       .sort((left, right) => right.revenue - left.revenue)
 
-    const shipmentSplit: ChartPoint[] = shipmentTypes.map((type, index) => ({
-      label: type,
-      value: Number(
-        salesRecords
-          .filter((record) => record.shipmentType === type)
-          .reduce((sum, record) => sum + record.tons, 0)
-          .toFixed(2)
-      ),
-      color: index === 0 ? '#1d4ed8' : '#f97316'
-    }))
-
     const vehicleSplit: ChartPoint[] = vehicleTypes.map((type, index) => ({
       label: type,
       value: Number(
@@ -2445,6 +2480,9 @@ export const useFactoryAccounting = () => {
       salesRecords,
       expenseRecords,
       totalIncomingTons,
+      totalIncomingAmount,
+      totalOpeningStoneTons,
+      totalOpeningProductTons,
       totalUsedStoneTons,
       totalOutputTons,
       totalBaggedTons,
@@ -2490,7 +2528,6 @@ export const useFactoryAccounting = () => {
       tonsTrend: buildTrend(salesRecords, (record) => record.tons, '#f97316'),
       incomingTrend: buildTrend(loads, (record) => record.tons, '#0f766e'),
       expenseTrend: buildTrend(expenseRecords, (record) => record.amount, '#dc2626'),
-      shipmentSplit,
       vehicleSplit,
       expenseByCategory,
       costBreakdown: buildCostBreakdown(defaultCosts.value)
@@ -2512,6 +2549,7 @@ export const useFactoryAccounting = () => {
     expenseCategories,
     paymentMethods,
     reminderFrequencies,
+    openingBalances,
     contacts,
     defaultCosts,
     dailyRecords,

@@ -20,10 +20,10 @@ export const getProductTypeFromText = (value: unknown): ProductType | null => {
   return null
 }
 
-export const isBulkAllowedForProduct = (value: unknown) => getProductTypeFromText(value) !== 'Mel'
+export const isBulkAllowedForProduct = (_value: unknown) => false
 
-export const normalizeBulkOutputTons = (productType: unknown, bulkOutputTons: number) =>
-  isBulkAllowedForProduct(productType) ? Number(bulkOutputTons) : 0
+export const normalizeBulkOutputTons = (_productType: unknown, _bulkOutputTons: number) =>
+  0
 
-export const normalizeShipmentTypeForProduct = (productName: unknown, shipmentType: ShipmentType): ShipmentType =>
-  isBulkAllowedForProduct(productName) ? shipmentType : 'qoplik'
+export const normalizeShipmentTypeForProduct = (_productName: unknown, _shipmentType: ShipmentType): ShipmentType =>
+  'qoplik'

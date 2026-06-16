@@ -27,18 +27,13 @@ const pageGuideKey = computed(() => {
   const path = route.path
 
   if (path === '/dashboard') return 'dashboard'
-  if (path === '/analysis') return 'analysis'
   if (path === '/production') return 'production'
   if (path === '/raw-materials') return 'rawMaterials'
-  if (path === '/suppliers') return 'suppliers'
   if (path === '/inventory') return 'inventory'
   if (path === '/sales') return 'sales'
   if (path === '/debtors') return 'debtors'
   if (path === '/expenses') return 'expenses'
   if (path === '/reports') return 'reports'
-  if (path === '/users') return 'users'
-  if (path === '/manual-entry') return 'manualEntry'
-  if (path === '/quick-entry') return 'quickEntry'
   if (path === '/barter') return 'barter'
 
   return 'overall'

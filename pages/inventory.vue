@@ -23,8 +23,7 @@ const balanceColumns: TableColumn[] = [
   { key: 'factory', label: 'Zavod' },
   { key: 'stoneBalance', label: 'Tosh qoldiq', align: 'right' },
   { key: 'productBalance', label: 'Tayyor yuk', align: 'right' },
-  { key: 'remainingBaggedTons', label: 'Qoplik qoldiq', align: 'right' },
-  { key: 'remainingBulkTons', label: 'Rasipnoy qoldiq', align: 'right' }
+  { key: 'remainingBaggedTons', label: 'Qoplik qoldiq', align: 'right' }
 ]
 
 const balanceRows = computed<Record<string, unknown>[]>(() => [...summary.value.factoryBreakdown])
@@ -43,7 +42,7 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
     <div>
       <h2 class="page-title">{{ t('Ostatka') }}</h2>
       <p class="page-subtitle">
-        {{ t("Qancha tosh, qoplik va rasipnoy qolganini shu yerda ko'rasiz. Manfiy chiqsa kamomad bor.") }}
+        {{ t("Qancha tosh va qoplik mahsulot qolganini shu yerda ko'rasiz. Manfiy chiqsa kamomad bor.") }}
       </p>
     </div>
   </section>
@@ -66,7 +65,7 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
     </div>
   </section>
 
-  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
     <StatCard title="Tosh qoldiq" :value="formatTons(summary.remainingStoneTons)" subtitle="kirim - sarf">
       <template #icon>TS</template>
     </StatCard>
@@ -75,9 +74,6 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
     </StatCard>
     <StatCard title="Qoplik qoldiq" :value="formatTons(summary.remainingBaggedTons)" subtitle="ombordagi qoplik">
       <template #icon>QP</template>
-    </StatCard>
-    <StatCard title="Rasipnoy qoldiq" :value="formatTons(summary.remainingBulkTons)" subtitle="ombordagi rasipnoy">
-      <template #icon>RS</template>
     </StatCard>
     <StatCard title="Ishlatilgan qop" :value="summary.totalNewBags" subtitle="jami sarflangan qop">
       <template #icon>QB</template>
@@ -110,11 +106,6 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
           </span>
         </template>
 
-        <template #cell-remainingBulkTons="{ value }">
-          <span :class="['font-semibold', balanceClass(Number(value))]">
-            {{ formatTons(Number(value)) }}
-          </span>
-        </template>
       </AppTable>
     </article>
 
@@ -128,7 +119,7 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
           <p class="font-semibold text-amber-900">O'tgan oydan qolgan qoldiq</p>
           <p class="mt-1">
             O'tgan oy ma'lumotlarini o'sha sana bilan kiriting: tosh qoldiq uchun `Tosh Kirimi`,
-            tayyor yuk uchun `Kunlik Hisob`, klient qarzi uchun `Pul Kiritish`, sotilgan yuk uchun `Sotuvlar`.
+            tayyor yuk uchun `Kunlik Hisob`, klient qarzi va to'lov uchun `Qarzdorlar`, sotilgan yuk uchun `Sotuvlar`.
             Keyin `Hammasi` yoki kerakli sana oralig'i tanlansa qoldiq avtomatik chiqadi.
           </p>
         </div>
@@ -143,10 +134,6 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="font-semibold text-slate-900">Qoplik qoldiq</p>
           <p class="mt-1">Qoplik ishlab chiqdi - qoplik sotildi</p>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="font-semibold text-slate-900">Rasipnoy qoldiq</p>
-          <p class="mt-1">Rasipnoy ishlab chiqdi - rasipnoy sotildi</p>
         </div>
       </div>
     </article>

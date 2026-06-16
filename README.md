@@ -5,14 +5,12 @@ Nuxt 3, TypeScript va Tailwind CSS asosidagi kunlik zavod hisob-kitob tizimi.
 ## Asosiy sahifalar
 
 - `Dashboard` - bugungi kirim, sotuv, foyda va trendlar
-- `Tez Kiritish` - bugungi yozuvlarni 1 joydan tez qo'shish
 - `Kunlik Hisob` - zavod bo`yicha kunlik sarf, qop va tannarx yozuvi
 - `Tosh Kirimi` - Howo yoki Kamazda kelgan tosh kirimi
-- `Sotuvlar` - klientga qoplik yoki rasipnoy sotuvlar
+- `Sotuvlar` - klientga qoplik sotuvlar
 - `Qarzdorlar` - ochiq qarzdor klientlar va to'lov kiritish
 - `Chiqimlar` - kunlik qo'shimcha chiqimlar va default sarf sozlamalari
 - `Hisobotlar` - sana oralig'i bo`yicha kesim va export
-- `Klientlar` - klientlar bo`yicha umumiy aylanish
 
 ## Biznes mantiqi
 
@@ -29,9 +27,6 @@ Nuxt 3, TypeScript va Tailwind CSS asosidagi kunlik zavod hisob-kitob tizimi.
   - `Svet`
   - `Tosh`
   - `Qop`
-- Yuk turlari:
-  - `qoplik`
-  - `rasipnoy`
 - Kirim mashinalari:
   - `Howo`
   - `Kamaz`

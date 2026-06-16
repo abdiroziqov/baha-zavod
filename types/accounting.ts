@@ -3,7 +3,7 @@ import type { UserRole } from '~/types/auth'
 export type FactoryName = 'Tepa shpaklevka' | 'Tepa kraska' | 'Past shpaklevka' | 'Past kraska'
 export type ProductType = 'Qum' | 'Mel'
 export type VehicleType = 'Howo' | 'Kamaz'
-export type ShipmentType = 'qoplik' | 'rasipnoy'
+export type ShipmentType = 'qoplik'
 export type PaymentStatus = 'tolangan' | 'qisman' | 'qarzdor' | 'avans'
 export type BalanceType = 'bizga_qarz' | 'bizdan_qarz' | 'yopilgan'
 export type ContactType = 'client' | 'supplier'
@@ -286,8 +286,18 @@ export interface MonthlyArchiveRecord {
   items: MonthlyArchiveItem[]
 }
 
+export interface OpeningBalanceRecord {
+  id: string
+  date: string
+  factory: FactoryName
+  stoneTons: number
+  productTons: number
+  notes: string
+}
+
 export interface AccountingStateSnapshot {
   defaultCosts: CostProfile
+  openingBalances: OpeningBalanceRecord[]
   dailyRecords: DailyFactoryRecord[]
   incomingLoads: IncomingLoadRecord[]
   scaleEntries: ScaleEntry[]

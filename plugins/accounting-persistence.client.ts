@@ -5,6 +5,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.hook('app:mounted', () => {
     const {
       defaultCosts,
+      openingBalances,
       dailyRecords,
       incomingLoads,
       scaleEntries,
@@ -29,6 +30,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     const buildSnapshot = (): AccountingStateSnapshot => ({
       defaultCosts: defaultCosts.value,
+      openingBalances: openingBalances.value,
       dailyRecords: dailyRecords.value,
       incomingLoads: incomingLoads.value,
       scaleEntries: scaleEntries.value,
@@ -48,6 +50,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     const applySnapshot = (snapshot: AccountingStateSnapshot) => {
       defaultCosts.value = snapshot.defaultCosts
+      openingBalances.value = snapshot.openingBalances ?? []
       dailyRecords.value = snapshot.dailyRecords
       incomingLoads.value = snapshot.incomingLoads
       scaleEntries.value = snapshot.scaleEntries
@@ -67,7 +70,8 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     const hasServerContent = (snapshot: AccountingStateSnapshot) =>
       Boolean(
-        snapshot.dailyRecords.length ||
+        snapshot.openingBalances.length ||
+          snapshot.dailyRecords.length ||
           snapshot.incomingLoads.length ||
           snapshot.scaleEntries.length ||
           snapshot.scaleCashEntries.length ||
@@ -86,6 +90,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       try {
         const localSnapshot = {
           defaultCosts: JSON.parse(window.localStorage.getItem(`${storagePrefix}default-costs`) || 'null'),
+          openingBalances: JSON.parse(window.localStorage.getItem(`${storagePrefix}opening-balances`) || '[]'),
           dailyRecords: JSON.parse(window.localStorage.getItem(`${storagePrefix}daily-records`) || '[]'),
           incomingLoads: JSON.parse(window.localStorage.getItem(`${storagePrefix}incoming-loads`) || '[]'),
           scaleEntries: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-entries`) || '[]'),
@@ -117,6 +122,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     const writeLocalSnapshot = (snapshot: AccountingStateSnapshot) => {
       try {
         window.localStorage.setItem(`${storagePrefix}default-costs`, JSON.stringify(snapshot.defaultCosts))
+        window.localStorage.setItem(`${storagePrefix}opening-balances`, JSON.stringify(snapshot.openingBalances))
         window.localStorage.setItem(`${storagePrefix}daily-records`, JSON.stringify(snapshot.dailyRecords))
         window.localStorage.setItem(`${storagePrefix}incoming-loads`, JSON.stringify(snapshot.incomingLoads))
         window.localStorage.setItem(`${storagePrefix}scale-entries`, JSON.stringify(snapshot.scaleEntries))
@@ -210,6 +216,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         watch(
           [
             defaultCosts,
+            openingBalances,
             dailyRecords,
             incomingLoads,
             scaleEntries,

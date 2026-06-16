@@ -150,7 +150,6 @@ const expensesSummary = computed(() => {
 })
 
 const sandBaggedCostPerTon = computed(() => getCostPerTon(costForm, 'Qum'))
-const sandBulkCostPerTon = computed(() => getBulkCostPerTon(costForm, 'Qum'))
 const chalkBaggedCostPerTon = computed(() => getCostPerTon(costForm, 'Mel'))
 const sandSalePricePerTon = computed(() => getDefaultSalePricePerTon(costForm, 'Qum'))
 const chalkSalePricePerTon = computed(() => getDefaultSalePricePerTon(costForm, 'Mel'))
@@ -404,28 +403,20 @@ watch(
         </div>
       </div>
 
-      <div class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div class="mb-4 grid gap-3 md:grid-cols-2">
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="text-xs text-slate-500">Qum qoplik 1 kg</p>
           <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(sandBaggedCostPerTon) }}</p>
-        </div>
-        <div class="rounded-2xl bg-sky-50 px-4 py-3">
-          <p class="text-xs text-sky-700">Qum rasipnoy 1 kg</p>
-          <p class="mt-1 text-lg font-semibold text-sky-700">{{ formatSom(sandBulkCostPerTon) }}</p>
         </div>
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="text-xs text-slate-500">Mel qoplik 1 kg</p>
           <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(chalkBaggedCostPerTon) }}</p>
         </div>
-        <div class="rounded-2xl bg-slate-100 px-4 py-3">
-          <p class="text-xs text-slate-500">Mel rasipnoy 1 kg</p>
-          <p class="mt-1 text-lg font-semibold text-slate-500">Yo`q</p>
-        </div>
       </div>
 
       <div class="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
         `240 / 450` sotuv narxi `/kg`. Tannarxga kirmaydi. Qoplik tannarxida `ishchi + bozorliq + ortib berish + ovqat + boshqaruvchi + svet + tosh + qop`
-        hisoblanadi. Rasipnoyda esa `ortib berish` va `qop` yo`q.
+        hisoblanadi.
       </div>
 
       <div class="grid gap-3 md:grid-cols-2">
@@ -450,7 +441,7 @@ watch(
       <div class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
         Formula mahsulot turiga qarab ishlaydi. `Qum` uchun ishchi `35`, `Mel` uchun ishchi `40`.
         `Qum/Mel kraska sotuv narxi / kg` saqlanadi, lekin tannarxga qo'shilmaydi.
-        `Bozorliq` ishlab chiqarilgan jami mahsulotga qo'shiladi. Rasipnoyda `ortib berish` va `qop` hisobga olinmaydi.
+        `Bozorliq` ishlab chiqarilgan jami mahsulotga qo'shiladi.
       </div>
     </article>
   </section>
