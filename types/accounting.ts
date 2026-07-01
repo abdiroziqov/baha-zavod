@@ -1,8 +1,10 @@
 import type { UserRole } from '~/types/auth'
 
 export type FactoryName = 'Tepa shpaklevka' | 'Tepa kraska' | 'Past shpaklevka' | 'Past kraska'
-export type ProductType = 'Qum' | 'Mel'
+export type ProductType = 'Mel'
 export type VehicleType = 'Howo' | 'Kamaz'
+export type SupplyMaterialType = 'stone' | 'bag'
+export type BagType = 'xira' | 'oq'
 export type ShipmentType = 'qoplik'
 export type PaymentStatus = 'tolangan' | 'qisman' | 'qarzdor' | 'avans'
 export type BalanceType = 'bizga_qarz' | 'bizdan_qarz' | 'yopilgan'
@@ -58,6 +60,7 @@ export interface DailyFactoryRecord extends CostProfile {
   date: string
   factory: FactoryName
   productType: ProductType
+  bagType: BagType
   incomingStoneTons: number
   usedStoneTons: number
   baggedOutputTons: number
@@ -71,8 +74,11 @@ export interface IncomingLoadRecord {
   id: string
   date: string
   factory: FactoryName | ''
+  materialType: SupplyMaterialType
+  bagType: BagType
   vehicleType: VehicleType
   tons: number
+  bagCount: number
   supplier: string
   pricePerTon: number
   totalAmount: number
@@ -143,9 +149,6 @@ export interface ContactRecord {
   type: ContactType
   name: string
   phone: string
-  telegramChatId: string
-  telegramUsername: string
-  address: string
   notes: string
   createdAt: string
 }
@@ -189,6 +192,7 @@ export interface DebtorSummary {
 export interface SupplierSummary {
   supplierName: string
   totalTons: number
+  totalBagCount: number
   totalAmount: number
   totalPaid: number
   totalDebt: number
@@ -204,7 +208,6 @@ export interface SupplierSummary {
 
 export interface ScaleEntry {
   id: string
-  telegramUpdateId: number
   date: string
   time: string
   direction: ScaleDirection
@@ -236,8 +239,7 @@ export interface ScaleCashEntry {
   paymentMethod: PaymentMethod
   description: string
   notes: string
-  source: 'manual' | 'telegram'
-  telegramUpdateId: number
+  source: 'manual'
   createdAt: string
 }
 
@@ -254,9 +256,6 @@ export interface ClientReminderSetting {
 export interface ClientDirectoryRecord extends ClientSummary {
   id: string
   phone: string
-  telegramChatId: string
-  telegramUsername: string
-  address: string
   notes: string
   saleCount: number
   hasSales: boolean
@@ -292,6 +291,10 @@ export interface OpeningBalanceRecord {
   factory: FactoryName
   stoneTons: number
   productTons: number
+  melTons: number
+  bagCount: number
+  xiraBagCount: number
+  oqBagCount: number
   notes: string
 }
 

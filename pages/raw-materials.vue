@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BalanceType, ContactRecord, FactoryName, IncomingLoadRecord, PaymentStatus, VehicleType } from '~/types/accounting'
+import type { BagType, BalanceType, ContactRecord, FactoryName, IncomingLoadRecord, PaymentStatus, SupplyMaterialType, VehicleType } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
 
 definePageMeta({
@@ -9,9 +9,12 @@ definePageMeta({
 type IncomingLoadFormState = {
   date: string
   factory: FactoryName | ''
+  materialType: SupplyMaterialType
+  bagType: BagType
   vehicleType: VehicleType
   vehicleCount: string
   tons: number
+  bagCount: number
   supplier: string
   totalAmount: number
   paidAmount: number
@@ -21,8 +24,6 @@ type IncomingLoadFormState = {
 type SupplierFormState = {
   name: string
   phone: string
-  telegramUsername: string
-  address: string
   notes: string
 }
 
@@ -52,9 +53,12 @@ const getVehicleDefaultTons = (vehicleType: VehicleType) => (vehicleType === 'Ho
 const createFormState = (): IncomingLoadFormState => ({
   date: latestDate.value,
   factory: '',
+  materialType: 'stone',
+  bagType: 'xira',
   vehicleType: 'Howo',
   vehicleCount: '1',
   tons: getVehicleDefaultTons('Howo'),
+  bagCount: 0,
   supplier: '',
   totalAmount: 0,
   paidAmount: 0,
@@ -65,6 +69,7 @@ const filters = reactive({
   startDate: '',
   endDate: '',
   factory: '',
+  materialType: '',
   vehicleType: '',
   supplier: ''
 })
@@ -84,8 +89,6 @@ const supplierError = ref('')
 const supplierForm = reactive<SupplierFormState>({
   name: '',
   phone: '',
-  telegramUsername: '',
-  address: '',
   notes: ''
 })
 
@@ -105,6 +108,7 @@ const supplierRows = computed<Record<string, unknown>[]>(() =>
       balanceType: summary?.balanceType ?? 'yopilgan',
       balanceAmount: summary?.balanceAmount ?? 0,
       totalTons: summary?.totalTons ?? 0,
+      totalBagCount: summary?.totalBagCount ?? 0,
       loadCount: summary?.loadCount ?? 0
     }
   })
@@ -113,9 +117,10 @@ const supplierRows = computed<Record<string, unknown>[]>(() =>
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
   { key: 'factory', label: 'Zavod' },
+  { key: 'materialLabel', label: 'Kirim turi' },
   { key: 'vehicleType', label: 'Mashina' },
-  { key: 'tons', label: 'Tonna', align: 'right' },
-  { key: 'pricePerTon', label: 'Narx / tonna', align: 'right' },
+  { key: 'quantity', label: 'Miqdor', align: 'right' },
+  { key: 'pricePerTon', label: 'Birlik narxi', align: 'right' },
   { key: 'supplier', label: "Ta'minotchi" },
   { key: 'totalAmount', label: 'Jami narx', align: 'right' },
   { key: 'balance', label: 'Balans', align: 'right' },
@@ -127,6 +132,7 @@ const supplierColumns: TableColumn[] = [
   { key: 'phone', label: 'Telefon' },
   { key: 'balanceAmount', label: 'Balans', align: 'right' },
   { key: 'totalTons', label: 'Tonna', align: 'right' },
+  { key: 'totalBagCount', label: 'Qop', align: 'right' },
   { key: 'actions', label: 'Amal', align: 'right' }
 ]
 
@@ -145,7 +151,11 @@ const filteredLoads = computed(() =>
         return false
       }
 
-      if (filters.vehicleType && record.vehicleType !== filters.vehicleType) {
+      if (filters.materialType && record.materialType !== filters.materialType) {
+        return false
+      }
+
+      if (filters.vehicleType && (record.materialType !== 'stone' || record.vehicleType !== filters.vehicleType)) {
         return false
       }
 
@@ -160,6 +170,7 @@ const filteredLoads = computed(() =>
 
 const loadSummary = computed(() => {
   const totalTons = filteredLoads.value.reduce((sum, record) => sum + record.tons, 0)
+  const totalBags = filteredLoads.value.reduce((sum, record) => sum + record.bagCount, 0)
   const totalAmount = filteredLoads.value.reduce((sum, record) => sum + record.totalAmount, 0)
   const totalPaid = filteredLoads.value.reduce((sum, record) => sum + record.paidAmount, 0)
   const totalDebt = filteredLoads.value.reduce((sum, record) => sum + record.remainingAmount, 0)
@@ -170,6 +181,7 @@ const loadSummary = computed(() => {
 
   return {
     totalTons,
+    totalBags,
     totalAmount,
     totalPaid,
     totalDebt,
@@ -184,6 +196,9 @@ const tableRows = computed<Record<string, unknown>[]>(() =>
 
     return {
       ...record,
+      materialLabel: record.materialType === 'bag' ? (record.bagType === 'oq' ? 'Oq qop' : 'Xira qop') : 'Tosh',
+      quantity: record.materialType === 'bag' ? record.bagCount : record.tons,
+      vehicleType: record.materialType === 'bag' ? '' : record.vehicleType,
       balance: advanceAmount > 0 ? advanceAmount : record.remainingAmount,
       balanceType,
       advanceAmount
@@ -192,7 +207,8 @@ const tableRows = computed<Record<string, unknown>[]>(() =>
 )
 
 const formTotalAmount = computed(() => Number(form.totalAmount || 0))
-const formPricePerTon = computed(() => getLoadPricePerTon(Number(form.tons), formTotalAmount.value))
+const formQuantity = computed(() => form.materialType === 'bag' ? Number(form.bagCount) : Number(form.tons))
+const formPricePerTon = computed(() => getLoadPricePerTon(formQuantity.value, formTotalAmount.value))
 const formRemainingAmount = computed(() => getRemainingAmount(formTotalAmount.value, Number(form.paidAmount || 0)))
 const formAdvanceAmount = computed(() => getLoadAdvanceAmount(formTotalAmount.value, Number(form.paidAmount || 0)))
 const formBalanceType = computed<BalanceType>(() => {
@@ -211,6 +227,9 @@ const formPaymentStatus = computed<PaymentStatus>(() => getPaymentStatus(formTot
 watch(
   () => [form.vehicleType, form.vehicleCount] as const,
   ([vehicleType, vehicleCount], previousValues) => {
+    if (form.materialType !== 'stone') {
+      return
+    }
     const previousVehicleType = previousValues?.[0]
     const previousVehicleCount = Number(previousValues?.[1] ?? '1')
     const previousDefault = previousVehicleType ? getVehicleDefaultTons(previousVehicleType) * previousVehicleCount : 0
@@ -330,9 +349,12 @@ const openEditModal = (row: Record<string, unknown>) => {
   Object.assign(form, {
     date: record.date,
     factory: record.factory,
+    materialType: record.materialType,
+    bagType: record.bagType,
     vehicleType: record.vehicleType,
     vehicleCount: '1',
     tons: record.tons,
+    bagCount: record.bagCount,
     supplier: record.supplier,
     totalAmount: record.totalAmount,
     paidAmount: record.paidAmount,
@@ -351,13 +373,16 @@ const saveLoad = () => {
 
   const totalAmount = Number(form.totalAmount)
   const paidAmount = Number(form.paidAmount)
-  const pricePerTon = getLoadPricePerTon(Number(form.tons), totalAmount)
+  const pricePerTon = getLoadPricePerTon(formQuantity.value, totalAmount)
 
   const payload: Omit<IncomingLoadRecord, 'id'> = {
     date: form.date,
     factory: form.factory,
+    materialType: form.materialType,
+    bagType: form.bagType,
     vehicleType: form.vehicleType as VehicleType,
-    tons: Number(form.tons),
+    tons: form.materialType === 'stone' ? Number(form.tons) : 0,
+    bagCount: form.materialType === 'bag' ? Math.round(Number(form.bagCount)) : 0,
     supplier: form.supplier.trim(),
     pricePerTon,
     totalAmount,
@@ -367,8 +392,8 @@ const saveLoad = () => {
     notes: form.notes.trim()
   }
 
-  if (!payload.date || !payload.vehicleType) {
-    formError.value = 'Sana va mashina turini kiriting.'
+  if (!payload.date || (payload.materialType === 'stone' && !payload.vehicleType)) {
+    formError.value = 'Sana va kirim ma`lumotini kiriting.'
     return
   }
 
@@ -377,8 +402,8 @@ const saveLoad = () => {
     return
   }
 
-  if (payload.totalAmount <= 0 || payload.paidAmount < 0) {
-    formError.value = 'Jami narx 0 dan katta bo`lsin, to`langan summa esa manfiy bo`lmasin.'
+  if (formQuantity.value <= 0 || payload.totalAmount <= 0 || payload.paidAmount < 0) {
+    formError.value = 'Miqdor va jami narx 0 dan katta bo`lsin.'
     return
   }
 
@@ -426,8 +451,6 @@ const resetSupplierForm = () => {
   Object.assign(supplierForm, {
     name: '',
     phone: '',
-    telegramUsername: '',
-    address: '',
     notes: ''
   })
   editingSupplierId.value = null
@@ -452,8 +475,6 @@ const openSupplierEditModal = (row: Record<string, unknown>) => {
   Object.assign(supplierForm, {
     name: record.name,
     phone: record.phone,
-    telegramUsername: record.telegramUsername,
-    address: record.address,
     notes: record.notes
   })
   editingSupplierId.value = record.id
@@ -486,9 +507,6 @@ const saveSupplier = () => {
     type: 'supplier' as const,
     name,
     phone: supplierForm.phone.trim(),
-    telegramChatId: '',
-    telegramUsername: supplierForm.telegramUsername.trim(),
-    address: supplierForm.address.trim(),
     notes: supplierForm.notes.trim()
   }
 
@@ -503,6 +521,7 @@ const saveSupplier = () => {
     }
   } else {
     addContact(payload)
+    form.supplier = name
   }
 
   supplierModalOpen.value = false
@@ -537,6 +556,7 @@ const clearFilters = () => {
   filters.startDate = ''
   filters.endDate = ''
   filters.factory = ''
+  filters.materialType = ''
   filters.vehicleType = ''
   filters.supplier = ''
 }
@@ -545,8 +565,8 @@ const clearFilters = () => {
 <template>
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h2 class="page-title">{{ t('Tosh Kirimi') }}</h2>
-      <p class="page-subtitle">{{ t("Howo yoki Kamazda kelgan tosh uchun jami kelish narxini kiriting. Narx / tonna avtomatik hisoblanadi.") }}</p>
+      <h2 class="page-title">{{ t("Ta'minotchilar") }}</h2>
+      <p class="page-subtitle">{{ t("Ta'minotchidan kelgan tosh yoki qop kirimi, to'lov va balans shu yerda yuritiladi.") }}</p>
       <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
     </div>
     <div class="flex flex-wrap gap-2">
@@ -556,7 +576,8 @@ const clearFilters = () => {
   </section>
 
   <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-    <StatCard title="Jami kirim" :value="formatTons(loadSummary.totalTons)" subtitle="filtrlangan yozuvlar" />
+    <StatCard title="Jami tosh" :value="formatTons(loadSummary.totalTons)" subtitle="filtrlangan yozuvlar" />
+    <StatCard title="Jami qop" :value="`${loadSummary.totalBags.toLocaleString('uz-UZ')} dona`" subtitle="qop kirimi" />
     <StatCard title="Jami summa" :value="formatSom(loadSummary.totalAmount)" subtitle="supplier bo`yicha" />
     <StatCard title="To'langan" :value="formatSom(loadSummary.totalPaid)" subtitle="berilgan pul" />
     <StatCard title="Biz qarzmiz" :value="formatSom(loadSummary.totalDebt)" subtitle="supplierga qoldiq" />
@@ -571,10 +592,19 @@ const clearFilters = () => {
       <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">{{ t('Hammasi') }}</button>
     </div>
 
-    <div class="mt-4 grid gap-3 md:grid-cols-6">
+    <div class="mt-4 grid gap-3 md:grid-cols-7">
       <AppInput v-model="filters.startDate" type="date" label="Boshlanish sanasi" />
       <AppInput v-model="filters.endDate" type="date" label="Tugash sanasi" />
       <AppSelect v-model="filters.factory" label="Zavod" :options="factoryOptions" placeholder="Hamma zavod" />
+      <AppSelect
+        v-model="filters.materialType"
+        label="Kirim turi"
+        :options="[
+          { label: 'Tosh', value: 'stone' },
+          { label: 'Qop', value: 'bag' }
+        ]"
+        placeholder="Hammasi"
+      />
       <AppSelect
         v-model="filters.vehicleType"
         label="Mashina turi"
@@ -626,6 +656,10 @@ const clearFilters = () => {
         {{ formatTons(Number(value)) }}
       </template>
 
+      <template #cell-totalBagCount="{ value }">
+        {{ Number(value).toLocaleString('uz-UZ') }} dona
+      </template>
+
       <template #cell-actions="{ row }">
         <div class="flex justify-end gap-2">
           <template v-if="isAdmin">
@@ -641,15 +675,19 @@ const clearFilters = () => {
   <section class="panel p-5">
     <AppTable :columns="columns" :rows="tableRows" empty-text="Tosh kirimi yozuvlari topilmadi.">
       <template #cell-vehicleType="{ value }">
-        <span class="data-chip">{{ value }}</span>
+        <span class="data-chip">{{ value || '-' }}</span>
       </template>
 
       <template #cell-factory="{ value }">
         {{ value || '-' }}
       </template>
 
-      <template #cell-tons="{ value }">
-        {{ formatTons(Number(value)) }}
+      <template #cell-materialLabel="{ value }">
+        <span class="data-chip">{{ value }}</span>
+      </template>
+
+      <template #cell-quantity="{ row, value }">
+        {{ row.materialType === 'bag' ? `${Number(value).toLocaleString('uz-UZ')} dona` : formatTons(Number(value)) }}
       </template>
 
       <template #cell-pricePerTon="{ value }">
@@ -689,6 +727,26 @@ const clearFilters = () => {
       <AppInput v-model="form.date" type="date" label="Sana" :invalid="Boolean(formError) && !form.date" required />
       <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" placeholder="Ixtiyoriy" />
       <AppSelect
+        v-model="form.materialType"
+        label="Kirim turi"
+        :options="[
+          { label: 'Tosh', value: 'stone' },
+          { label: 'Qop', value: 'bag' }
+        ]"
+        required
+      />
+      <AppSelect
+        v-if="form.materialType === 'bag'"
+        v-model="form.bagType"
+        label="Qop turi"
+        :options="[
+          { label: 'Xira qop', value: 'xira' },
+          { label: 'Oq qop', value: 'oq' }
+        ]"
+        required
+      />
+      <AppSelect
+        v-if="form.materialType === 'stone'"
         v-model="form.vehicleType"
         label="Mashina turi"
         :options="[
@@ -699,6 +757,7 @@ const clearFilters = () => {
         required
       />
       <AppSelect
+        v-if="form.materialType === 'stone'"
         v-model="form.vehicleCount"
         label="Soni"
         :options="[
@@ -709,7 +768,8 @@ const clearFilters = () => {
           { label: '5 ta', value: '5' }
         ]"
       />
-      <AppInput v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" placeholder="Ixtiyoriy" />
+      <AppInput v-if="form.materialType === 'stone'" v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" />
+      <AppInput v-else v-model="form.bagCount" type="number" min="0" step="1" label="Qop soni (dona)" />
       <AppInput
         v-model="form.totalAmount"
         type="number"
@@ -720,16 +780,26 @@ const clearFilters = () => {
         required
       />
       <AppInput v-model="form.paidAmount" type="number" min="0" step="0.01" label="To'langan summa" />
-      <AppSelect
-        v-model="form.supplier"
-        label="Ta'minotchi"
-        :options="supplierSelectOptions"
-        :translate-options="false"
-        :searchable="true"
-        placeholder="Karer yoki ta'minotchi nomi"
-        :invalid="Boolean(formError) && !form.supplier.trim()"
-        required
-      />
+      <div>
+        <AppSelect
+          v-model="form.supplier"
+          label="Ta'minotchi"
+          :options="supplierSelectOptions"
+          :translate-options="false"
+          :searchable="true"
+          placeholder="Karer yoki ta'minotchi nomi"
+          :invalid="Boolean(formError) && !form.supplier.trim()"
+          required
+        />
+        <button
+          v-if="isAdmin"
+          type="button"
+          class="mt-2 text-sm font-semibold text-brand-700 hover:text-brand-800"
+          @click="openSupplierCreateModal"
+        >
+          + Yangi ta'minotchi qo'shish
+        </button>
+      </div>
       <div class="md:col-span-2">
         <AppInput v-model="form.notes" label="Izoh" placeholder="Masalan, ertalabgi Howo yuk" />
       </div>
@@ -742,7 +812,7 @@ const clearFilters = () => {
           <p class="mt-1 text-lg font-bold text-slate-900">{{ formatSom(formTotalAmount) }}</p>
         </div>
         <div>
-          <p class="text-xs uppercase tracking-wide text-slate-500">Avtomatik narx / tonna</p>
+          <p class="text-xs uppercase tracking-wide text-slate-500">Avtomatik birlik narxi</p>
           <p class="mt-1 text-lg font-bold text-slate-900">{{ formatSom(formPricePerTon) }}</p>
         </div>
         <div>
@@ -759,7 +829,7 @@ const clearFilters = () => {
         </div>
       </div>
       <p class="mt-3 text-xs text-slate-500">Holat: {{ formPaymentStatus }}</p>
-      <p class="mt-2 text-xs text-slate-500">Masalan, 1 Howo uchun `2 000 000` yoki `1 800 000` jami narx kiriting. Tonna kiritilsa narx / tonna avtomatik chiqadi.</p>
+      <p class="mt-2 text-xs text-slate-500">Tosh tonnada, qop donada kiritiladi. Birlik narxi jami summadan avtomatik hisoblanadi.</p>
     </div>
 
     <p v-if="formError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -780,8 +850,6 @@ const clearFilters = () => {
     <div class="grid gap-4 md:grid-cols-2">
       <AppInput v-model="supplierForm.name" label="Nomi" :invalid="Boolean(supplierError) && !supplierForm.name.trim()" required />
       <AppInput v-model="supplierForm.phone" label="Telefon" placeholder="+998..." />
-      <AppInput v-model="supplierForm.telegramUsername" label="Telegram" placeholder="@username" />
-      <AppInput v-model="supplierForm.address" label="Manzil" />
       <div class="md:col-span-2">
         <AppInput v-model="supplierForm.notes" label="Izoh" />
       </div>
@@ -804,7 +872,7 @@ const clearFilters = () => {
   <ConfirmDialog
     :open="deleteDialogOpen"
     title="Kirim yozuvini o'chirish"
-    :message="`Tanlangan ${selectedLoad?.vehicleType ?? ''} kirimini o'chirasizmi?`"
+    :message="`Tanlangan ${selectedLoad?.materialType === 'bag' ? 'qop' : 'tosh'} kirimini o'chirasizmi?`"
     confirm-text="O'chirish"
     cancel-text="Bekor qilish"
     @confirm="confirmDelete"

@@ -34,9 +34,9 @@ const createForm = reactive({
   date: latestDate.value,
   supplierName: '',
   clientName: '',
-  productName: 'Qum' as ProductType,
+  productName: 'Mel' as ProductType,
   tons: 0,
-  pricePerTon: getInitialPrice('Qum'),
+  pricePerTon: getInitialPrice('Mel'),
   notes: ''
 })
 
@@ -45,9 +45,9 @@ const editForm = reactive({
   date: latestDate.value,
   supplierName: '',
   clientName: '',
-  productName: 'Qum' as ProductType,
+  productName: 'Mel' as ProductType,
   tons: 0,
-  pricePerTon: getInitialPrice('Qum'),
+  pricePerTon: getInitialPrice('Mel'),
   notes: ''
 })
 
@@ -56,8 +56,8 @@ const editError = ref('')
 const selectedRecord = ref<BarterRecord | null>(null)
 const editModalOpen = ref(false)
 const deleteDialogOpen = ref(false)
-const previousCreateDefaultPrice = ref(getInitialPrice('Qum'))
-const previousEditDefaultPrice = ref(getInitialPrice('Qum'))
+const previousCreateDefaultPrice = ref(getInitialPrice('Mel'))
+const previousEditDefaultPrice = ref(getInitialPrice('Mel'))
 
 const historyColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -206,10 +206,10 @@ const resetCreateForm = () => {
   createForm.date = latestDate.value
   createForm.supplierName = ''
   createForm.clientName = ''
-  createForm.productName = 'Qum'
+  createForm.productName = 'Mel'
   createForm.tons = 0
-  createForm.pricePerTon = getInitialPrice('Qum')
-  previousCreateDefaultPrice.value = getInitialPrice('Qum')
+  createForm.pricePerTon = getInitialPrice('Mel')
+  previousCreateDefaultPrice.value = getInitialPrice('Mel')
   createForm.notes = ''
   formError.value = ''
 }
@@ -220,10 +220,10 @@ const closeEditModal = () => {
   editForm.date = latestDate.value
   editForm.supplierName = ''
   editForm.clientName = ''
-  editForm.productName = 'Qum'
+  editForm.productName = 'Mel'
   editForm.tons = 0
-  editForm.pricePerTon = getInitialPrice('Qum')
-  previousEditDefaultPrice.value = getInitialPrice('Qum')
+  editForm.pricePerTon = getInitialPrice('Mel')
+  previousEditDefaultPrice.value = getInitialPrice('Mel')
   editForm.notes = ''
   editError.value = ''
 }
@@ -342,9 +342,9 @@ const closeDelete = () => {
 const applySameNameCandidate = (name: string, maxOffset: number) => {
   createForm.supplierName = name
   createForm.clientName = name
-  createForm.productName = 'Qum'
+  createForm.productName = 'Mel'
   createForm.tons = 0
-  createForm.pricePerTon = getInitialPrice('Qum')
+  createForm.pricePerTon = getInitialPrice('Mel')
   formError.value = `Bu juftlik uchun maksimal barter ${formatSom(Number(maxOffset.toFixed(2)))}. Mahsulot, tonna va narxni kiriting.`
 }
 
@@ -379,7 +379,7 @@ watch(
   <section class="flex flex-wrap items-start justify-between gap-3">
     <div>
       <h2 class="page-title">{{ t('Barter DB') }}</h2>
-      <p class="page-subtitle">{{ t("Tosh bilan qum yoki mel o'zaro hisobdan yopiladigan yozuvlar shu yerda yuradi.") }}</p>
+      <p class="page-subtitle">{{ t("Tosh bilan mel o'zaro hisobdan yopiladigan yozuvlar shu yerda yuradi.") }}</p>
     </div>
   </section>
 
@@ -396,7 +396,7 @@ watch(
   <section v-if="canManageAccounting" class="panel p-5">
     <header class="mb-4">
       <h3 class="text-base font-semibold text-slate-900">{{ t('Barter yozuvi qo`shish') }}</h3>
-      <p class="text-sm text-slate-500">{{ t("Pul bermasdan, tosh qarzini qum yoki mel bilan yopilgan mahsulot bo`yicha shu yerga yozing.") }}</p>
+      <p class="text-sm text-slate-500">{{ t("Pul bermasdan, tosh qarzini mel bilan yopilgan mahsulot bo`yicha shu yerga yozing.") }}</p>
     </header>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
@@ -434,7 +434,7 @@ watch(
         :invalid="Boolean(formError) && Number(createForm.pricePerTon) <= 0"
       />
       <AppInput :model-value="createAmount" type="number" label="Jami summa" disabled />
-      <AppInput v-model="createForm.notes" label="Izoh" placeholder="Masalan, tosh o'rniga qum bilan yopildi" />
+      <AppInput v-model="createForm.notes" label="Izoh" placeholder="Masalan, tosh o'rniga mel bilan yopildi" />
     </div>
 
     <div class="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-4">

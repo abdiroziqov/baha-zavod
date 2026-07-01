@@ -8,6 +8,7 @@ export type NavigationIcon =
   | 'raw-materials'
   | 'inventory'
   | 'sales'
+  | 'clients'
   | 'debtors'
   | 'expenses'
   | 'reports'
@@ -25,9 +26,10 @@ const navigationItems: NavigationItem[] = [
   { label: 'Audit Log', to: '/audit', icon: 'audit', roles: ['admin'], group: 'main' },
   { label: 'Barter DB', to: '/barter', icon: 'barter', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Kunlik Hisob', to: '/production', icon: 'production', roles: ['admin', 'manager', 'operator'], group: 'main' },
-  { label: 'Tosh Kirimi', to: '/raw-materials', icon: 'raw-materials', roles: ['admin', 'manager', 'operator'], group: 'main' },
+  { label: "Ta'minotchilar", to: '/raw-materials', icon: 'raw-materials', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Ostatka', to: '/inventory', icon: 'inventory', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Sotuvlar', to: '/sales', icon: 'sales', roles: ['admin', 'manager', 'operator'], group: 'main' },
+  { label: 'Klientlar', to: '/clients', icon: 'clients', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Qarzdorlar', to: '/debtors', icon: 'debtors', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Chiqimlar', to: '/expenses', icon: 'expenses', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Hisobotlar', to: '/reports', icon: 'reports', roles: ['admin', 'manager', 'operator'], group: 'main' }

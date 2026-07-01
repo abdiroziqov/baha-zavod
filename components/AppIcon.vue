@@ -7,6 +7,7 @@ type IconName =
   | 'raw-materials'
   | 'inventory'
   | 'sales'
+  | 'clients'
   | 'debtors'
   | 'expenses'
   | 'reports'
@@ -129,6 +130,22 @@ defineProps<Props>()
     <path d="M3 7.5 12 3l9 4.5-9 4.5L3 7.5Z" />
     <path d="M3 12 12 16.5 21 12" />
     <path d="M3 16.5 12 21l9-4.5" />
+  </svg>
+
+  <svg
+    v-else-if="name === 'clients'"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="9" cy="8" r="3" />
+    <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+    <circle cx="17" cy="9" r="2.5" />
+    <path d="M15 14.5a4.5 4.5 0 0 1 5.5 4.5" />
   </svg>
 
   <svg

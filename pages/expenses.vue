@@ -149,9 +149,7 @@ const expensesSummary = computed(() => {
   }
 })
 
-const sandBaggedCostPerTon = computed(() => getCostPerTon(costForm, 'Qum'))
 const chalkBaggedCostPerTon = computed(() => getCostPerTon(costForm, 'Mel'))
-const sandSalePricePerTon = computed(() => getDefaultSalePricePerTon(costForm, 'Qum'))
 const chalkSalePricePerTon = computed(() => getDefaultSalePricePerTon(costForm, 'Mel'))
 const tableRows = computed<Record<string, unknown>[]>(() => [...filteredExpenses.value])
 
@@ -329,7 +327,7 @@ watch(
     <StatCard title="Jami chiqim" :value="formatSom(expensesSummary.total)" subtitle="filtrlangan yozuvlar" />
     <StatCard title="Yozuvlar" :value="expensesSummary.count" subtitle="chiqimlar soni" />
     <StatCard title="Kategoriya" :value="expensesSummary.categories" subtitle="faol turlar" />
-    <StatCard title="Qum qoplik" :value="formatSom(sandBaggedCostPerTon)" subtitle="1 kg tannarx" />
+    <StatCard title="Mel qoplik" :value="formatSom(chalkBaggedCostPerTon)" subtitle="1 kg tannarx" />
   </section>
 
   <section class="panel p-4">
@@ -389,25 +387,17 @@ watch(
           <h3 class="text-base font-semibold text-slate-900">Avtomatik tannarx sozlamasi</h3>
           <p class="text-xs text-slate-500">Bu qiymatlar o'zgarsa kunlik hisob, dashboard va hisobotlar avtomatik yangilanadi</p>
         </div>
-        <span class="data-chip">Qum qoplik = {{ formatSom(sandBaggedCostPerTon) }} / kg</span>
+        <span class="data-chip">Mel qoplik = {{ formatSom(chalkBaggedCostPerTon) }} / kg</span>
       </header>
 
-      <div class="mb-4 grid gap-3 md:grid-cols-2">
-        <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
-          <p class="text-xs text-sky-700">Qum sotuv narxi / kg</p>
-          <p class="mt-1 text-lg font-semibold text-sky-900">{{ formatSom(sandSalePricePerTon) }}</p>
-        </div>
+      <div class="mb-4 grid gap-3">
         <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
           <p class="text-xs text-sky-700">Mel kraska sotuv narxi / kg</p>
           <p class="mt-1 text-lg font-semibold text-sky-900">{{ formatSom(chalkSalePricePerTon) }}</p>
         </div>
       </div>
 
-      <div class="mb-4 grid gap-3 md:grid-cols-2">
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Qum qoplik 1 kg</p>
-          <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(sandBaggedCostPerTon) }}</p>
-        </div>
+      <div class="mb-4 grid gap-3">
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="text-xs text-slate-500">Mel qoplik 1 kg</p>
           <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(chalkBaggedCostPerTon) }}</p>
@@ -415,14 +405,12 @@ watch(
       </div>
 
       <div class="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        `240 / 450` sotuv narxi `/kg`. Tannarxga kirmaydi. Qoplik tannarxida `ishchi + bozorliq + ortib berish + ovqat + boshqaruvchi + svet + tosh + qop`
+        `450` sotuv narxi `/kg`. Tannarxga kirmaydi. Qoplik tannarxida `ishchi + bozorliq + ortib berish + ovqat + boshqaruvchi + svet + tosh + qop`
         hisoblanadi.
       </div>
 
       <div class="grid gap-3 md:grid-cols-2">
-        <AppInput v-model="costForm.sandPricePerTon" type="number" min="0" step="0.01" label="Qum sotuv narxi / kg" :disabled="!isAdmin" />
         <AppInput v-model="costForm.chalkPricePerTon" type="number" min="0" step="0.01" label="Mel kraska sotuv narxi / kg" :disabled="!isAdmin" />
-        <AppInput v-model="costForm.sandWorkerCostPerTon" type="number" min="0" step="0.01" label="Qum ishchi" :disabled="!isAdmin" />
         <AppInput v-model="costForm.chalkWorkerCostPerTon" type="number" min="0" step="0.01" label="Mel ishchi" :disabled="!isAdmin" />
         <AppInput v-model="costForm.marketCostPerTon" type="number" min="0" step="0.01" label="Bozorliq" :disabled="!isAdmin" />
         <AppInput v-model="costForm.loadingCostPerTon" type="number" min="0" step="0.01" label="Ortib berish" :disabled="!isAdmin" />
@@ -439,8 +427,7 @@ watch(
       </div>
 
       <div class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        Formula mahsulot turiga qarab ishlaydi. `Qum` uchun ishchi `35`, `Mel` uchun ishchi `40`.
-        `Qum/Mel kraska sotuv narxi / kg` saqlanadi, lekin tannarxga qo'shilmaydi.
+        `Mel` uchun ishchi `40`. `Mel kraska sotuv narxi / kg` saqlanadi, lekin tannarxga qo'shilmaydi.
         `Bozorliq` ishlab chiqarilgan jami mahsulotga qo'shiladi.
       </div>
     </article>

@@ -6,7 +6,7 @@ Nuxt 3, TypeScript va Tailwind CSS asosidagi kunlik zavod hisob-kitob tizimi.
 
 - `Dashboard` - bugungi kirim, sotuv, foyda va trendlar
 - `Kunlik Hisob` - zavod bo`yicha kunlik sarf, qop va tannarx yozuvi
-- `Tosh Kirimi` - Howo yoki Kamazda kelgan tosh kirimi
+- `Ta'minotchilar` - ta'minotchidan kelgan tosh va qop kirimi
 - `Sotuvlar` - klientga qoplik sotuvlar
 - `Qarzdorlar` - ochiq qarzdor klientlar va to'lov kiritish
 - `Chiqimlar` - kunlik qo'shimcha chiqimlar va default sarf sozlamalari
@@ -18,7 +18,6 @@ Nuxt 3, TypeScript va Tailwind CSS asosidagi kunlik zavod hisob-kitob tizimi.
 - Sotuv narxi har safar qo'lda kiritiladi
 - Har bir sotuvda `to'langan summa` va `qarz qoldiq` yuritiladi
 - Default tannarx komponentlari:
-  - `Qum`
   - `Mel`
   - `Ishchi`
   - `Ortib berish`
@@ -58,10 +57,6 @@ yarn typecheck
 yarn build
 yarn preview
 ```
-
-## Telegram
-
-Telegram orqali yuborish funksiyasi o‘chirildi.
 
 ## Deploy
 

@@ -45,7 +45,8 @@ type SharedExpenseRow = {
 const createFormState = (): Omit<DailyFactoryRecord, 'id'> => ({
   date: latestDate.value,
   factory: defaultFactory,
-  productType: 'Qum',
+  productType: 'Mel',
+  bagType: 'xira',
   incomingStoneTons: 0,
   usedStoneTons: 0,
   baggedOutputTons: 0,
@@ -57,7 +58,8 @@ const createFormState = (): Omit<DailyFactoryRecord, 'id'> => ({
 })
 
 const createFactoryState = (): DailyFactoryCreateState => ({
-  productType: 'Qum',
+  productType: 'Mel',
+  bagType: 'xira',
   baggedOutputTons: 0,
   bulkOutputTons: 0,
   notes: ''
@@ -138,7 +140,6 @@ const tableRows = computed<Record<string, unknown>[]>(() =>
 )
 
 const costItems = computed(() => [
-  { label: 'Qum ishchi', value: defaultCosts.value.sandWorkerCostPerTon },
   { label: 'Mel ishchi', value: defaultCosts.value.chalkWorkerCostPerTon },
   { label: 'Bozorliq', value: defaultCosts.value.marketCostPerTon },
   { label: 'Ortib berish', value: defaultCosts.value.loadingCostPerTon },
@@ -268,6 +269,7 @@ const openEditModal = (row: Record<string, unknown>) => {
     date: record.date,
     factory: record.factory,
     productType: record.productType,
+    bagType: record.bagType,
     baggedOutputTons: record.baggedOutputTons,
     bulkOutputTons: 0,
     incomingStoneTons: 0,
@@ -307,6 +309,7 @@ const saveRecord = () => {
           date: createDate.value,
           factory,
           productType: state.productType,
+          bagType: state.bagType,
           incomingStoneTons: getCreateFactoryUsedStoneTons(factory),
           usedStoneTons: getCreateFactoryUsedStoneTons(factory),
           baggedOutputTons: Number(state.baggedOutputTons),
@@ -353,6 +356,7 @@ const saveRecord = () => {
     date: form.date,
     factory: form.factory as FactoryName,
     productType: form.productType as ProductType,
+    bagType: form.bagType,
     incomingStoneTons: formUsedStoneTons.value,
     usedStoneTons: formUsedStoneTons.value,
     baggedOutputTons: Number(form.baggedOutputTons),
@@ -516,6 +520,15 @@ watch(
               :invalid="Boolean(formError) && !form.productType"
               required
             />
+            <AppSelect
+              v-model="form.bagType"
+              label="Qop turi"
+              :options="[
+                { label: 'Xira qop', value: 'xira' },
+                { label: 'Oq qop', value: 'oq' }
+              ]"
+              required
+            />
             <AppInput v-model="form.baggedOutputTons" type="number" min="0" step="0.01" label="Qoplik mahsulot (t)" />
             <div class="rounded-2xl bg-slate-50 px-4 py-3">
               <p class="text-xs text-slate-500">Avtomatik tosh</p>
@@ -577,6 +590,14 @@ watch(
                   v-model="createForms[factory].productType"
                   label="Mahsulot turi"
                   :options="productTypes.map((item) => ({ label: item, value: item }))"
+                />
+                <AppSelect
+                  v-model="createForms[factory].bagType"
+                  label="Qop turi"
+                  :options="[
+                    { label: 'Xira qop', value: 'xira' },
+                    { label: 'Oq qop', value: 'oq' }
+                  ]"
                 />
                 <AppInput
                   v-model="createForms[factory].baggedOutputTons"

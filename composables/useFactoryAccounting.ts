@@ -13,6 +13,7 @@ import type {
   ArchiveFactoryScope,
   AuditAction,
   AuditLogRecord,
+  BagType,
   BarterRecord,
   ClientReminderSetting,
   ClientDirectoryRecord,
@@ -42,6 +43,7 @@ import type {
   ScaleSyncMeta,
   SaleRecord,
   ShipmentType,
+  SupplyMaterialType,
   SupplierSummary,
   VehicleType
 } from '~/types/accounting'
@@ -92,7 +94,7 @@ const workerPayoutModeByFactory: Record<FactoryName, 'daily' | 'monthly'> = {
   'Past shpaklevka': 'daily',
   'Past kraska': 'daily'
 }
-export const productTypes: ProductType[] = ['Qum', 'Mel']
+export const productTypes: ProductType[] = ['Mel']
 export const vehicleTypes: VehicleType[] = ['Howo', 'Kamaz']
 export const shipmentTypes: ShipmentType[] = ['qoplik']
 export const expenseCategories: ExpenseCategory[] = [
@@ -209,10 +211,10 @@ export const getBagCount = (baggedOutputTons: number) => Math.round(Math.max(bag
 export const getKilograms = (tons: number) => Number((Math.max(tons, 0) * KG_PER_TON).toFixed(2))
 
 export const getDefaultSalePricePerTon = (profile: CostProfile, productType: ProductType) =>
-  productType === 'Qum' ? profile.sandPricePerTon : profile.chalkPricePerTon
+  profile.chalkPricePerTon
 
 export const getWorkerCostPerTon = (profile: CostProfile, productType: ProductType) =>
-  productType === 'Qum' ? profile.sandWorkerCostPerTon : profile.chalkWorkerCostPerTon
+  profile.chalkWorkerCostPerTon
 
 export const getProductionCostBreakdown = (
   profile: CostProfile,
@@ -291,7 +293,7 @@ const normalizeDailyRecord = (
   profile: CostProfile
 ): DailyFactoryRecord => {
   const baggedOutputTons = Number(record.baggedOutputTons)
-  const productType = record.productType ?? 'Qum'
+  const productType: ProductType = 'Mel'
   const bulkOutputTons = normalizeBulkOutputTons(productType, Number(record.bulkOutputTons))
   const usedStoneTons = getUsedStoneTons({ baggedOutputTons, bulkOutputTons })
 
@@ -300,6 +302,7 @@ const normalizeDailyRecord = (
     ...profile,
     id: record.id ?? createId('day'),
     productType,
+    bagType: record.bagType === 'oq' ? 'oq' : 'xira',
     baggedOutputTons,
     bulkOutputTons,
     incomingStoneTons: usedStoneTons,
@@ -388,11 +391,14 @@ const normalizeIncomingLoadRecord = (
   fallbackPricePerTon = 0,
   fallbackPaidAmount?: number
 ): IncomingLoadRecord => {
-  const tons = Number(record.tons)
+  const materialType: SupplyMaterialType = record.materialType === 'bag' ? 'bag' : 'stone'
+  const tons = materialType === 'stone' ? Number(record.tons) : 0
+  const bagCount = materialType === 'bag' ? Math.max(Math.round(Number(record.bagCount ?? 0)), 0) : 0
+  const quantity = materialType === 'bag' ? bagCount : tons
   const fallbackUnitPrice = Number(record.pricePerTon ?? fallbackPricePerTon)
   const rawTotalAmount = Number(record.totalAmount)
-  const totalAmount = Number.isFinite(rawTotalAmount) && rawTotalAmount > 0 ? rawTotalAmount : getLoadTotal(tons, fallbackUnitPrice)
-  const pricePerTon = getLoadPricePerTon(tons, totalAmount)
+  const totalAmount = Number.isFinite(rawTotalAmount) && rawTotalAmount > 0 ? rawTotalAmount : getLoadTotal(quantity, fallbackUnitPrice)
+  const pricePerTon = getLoadPricePerTon(quantity, totalAmount)
   const rawPaidAmount = Number(record.paidAmount ?? fallbackPaidAmount ?? totalAmount)
   const paidAmount = Number.isFinite(rawPaidAmount) ? rawPaidAmount : totalAmount
   const remainingAmount = getRemainingAmount(totalAmount, paidAmount)
@@ -401,7 +407,10 @@ const normalizeIncomingLoadRecord = (
     ...record,
     id: record.id ?? createId('load'),
     factory: record.factory ?? '',
+    materialType,
+    bagType: record.bagType === 'oq' ? 'oq' : 'xira',
     tons,
+    bagCount,
     supplier: record.supplier.trim(),
     pricePerTon,
     totalAmount,
@@ -416,9 +425,6 @@ const normalizeContactRecord = (record: Partial<ContactRecord>): ContactRecord =
   type: record.type ?? 'client',
   name: record.name?.trim() ?? '',
   phone: record.phone?.trim() ?? '',
-  telegramChatId: record.telegramChatId?.trim() ?? '',
-  telegramUsername: record.telegramUsername?.trim().replace(/^@/, '') ?? '',
-  address: record.address?.trim() ?? '',
   notes: record.notes?.trim() ?? '',
   createdAt: record.createdAt ?? new Date().toISOString()
 })
@@ -438,7 +444,7 @@ const normalizeBarterRecord = (record: Partial<BarterRecord>): BarterRecord => (
   date: record.date ?? new Date().toISOString().slice(0, 10),
   supplierName: record.supplierName?.trim() ?? '',
   clientName: record.clientName?.trim() ?? '',
-  productName: productTypes.includes(record.productName as ProductType) ? (record.productName as ProductType) : 'Qum',
+  productName: 'Mel',
   tons: Number(Math.max(record.tons ?? 0, 0).toFixed(2)),
   pricePerTon: Number(Math.max(record.pricePerTon ?? 0, 0).toFixed(2)),
   amount: Number(
@@ -452,7 +458,6 @@ const normalizeBarterRecord = (record: Partial<BarterRecord>): BarterRecord => (
 
 const normalizeScaleEntryRecord = (record: Partial<ScaleEntry>): ScaleEntry => ({
   id: record.id ?? createId('scale'),
-  telegramUpdateId: Number(record.telegramUpdateId ?? 0),
   date: record.date ?? new Date().toISOString().slice(0, 10),
   time: normalizeTime(record.time),
   direction: scaleDirections.includes(record.direction as ScaleDirection) ? (record.direction as ScaleDirection) : 'unknown',
@@ -484,8 +489,7 @@ const normalizeScaleCashEntryRecord = (record: Partial<ScaleCashEntry>): ScaleCa
   paymentMethod: record.paymentMethod ?? 'Naqd',
   description: record.description?.trim() ?? '',
   notes: record.notes?.trim() ?? '',
-  source: record.source === 'telegram' ? 'telegram' : 'manual',
-  telegramUpdateId: Number(record.telegramUpdateId ?? 0),
+  source: 'manual',
   createdAt: record.createdAt ?? new Date().toISOString()
 })
 
@@ -536,13 +540,16 @@ const normalizeOpeningBalanceRecord = (record: Partial<OpeningBalanceRecord>): O
   date: record.date ?? new Date().toISOString().slice(0, 10),
   factory: record.factory ?? defaultFactory,
   stoneTons: Number(Math.max(record.stoneTons ?? 0, 0).toFixed(2)),
-  productTons: Number(Math.max(record.productTons ?? 0, 0).toFixed(2)),
+  melTons: Number(Math.max(record.melTons ?? record.productTons ?? 0, 0).toFixed(2)),
+  productTons: Number(Math.max(record.melTons ?? record.productTons ?? 0, 0).toFixed(2)),
+  xiraBagCount: Math.max(Math.round(record.xiraBagCount ?? record.bagCount ?? 0), 0),
+  oqBagCount: Math.max(Math.round(record.oqBagCount ?? 0), 0),
+  bagCount: Math.max(Math.round((record.xiraBagCount ?? record.bagCount ?? 0) + (record.oqBagCount ?? 0)), 0),
   notes: record.notes?.trim() ?? ''
 })
 
 const buildCostBreakdown = (profile: CostProfile) => {
   return [
-    { label: 'Qum ishchi', value: profile.sandWorkerCostPerTon, color: '#16a34a' },
     { label: 'Mel ishchi', value: profile.chalkWorkerCostPerTon, color: '#15803d' },
     { label: 'Bozorliq', value: profile.marketCostPerTon, color: '#7c2d12' },
     { label: 'Yuklash', value: profile.loadingCostPerTon, color: '#0f766e' },
@@ -950,9 +957,6 @@ export const useFactoryAccounting = () => {
       return {
         id: contact?.id ?? `client-${normalizeClientName(summary.clientName)}`,
         phone: contact?.phone ?? '',
-        telegramChatId: contact?.telegramChatId ?? '',
-        telegramUsername: contact?.telegramUsername ?? '',
-        address: contact?.address ?? '',
         notes: contact?.notes ?? '',
         saleCount,
         hasSales: saleCount > 0,
@@ -989,6 +993,7 @@ export const useFactoryAccounting = () => {
       summaryMap.set(supplierName, {
         supplierName,
         totalTons: 0,
+        totalBagCount: 0,
         totalAmount: 0,
         totalPaid: 0,
         totalDebt: 0,
@@ -1007,6 +1012,7 @@ export const useFactoryAccounting = () => {
       const current = summaryMap.get(load.supplier) ?? {
         supplierName: load.supplier,
         totalTons: 0,
+        totalBagCount: 0,
         totalAmount: 0,
         totalPaid: 0,
         totalDebt: 0,
@@ -1023,6 +1029,7 @@ export const useFactoryAccounting = () => {
       const advanceAmount = getLoadAdvanceAmount(load.totalAmount, load.paidAmount)
 
       current.totalTons += load.tons
+      current.totalBagCount += load.bagCount
       current.totalAmount += load.totalAmount
       current.totalPaid += load.paidAmount
       current.totalDebt += load.remainingAmount
@@ -1056,6 +1063,7 @@ export const useFactoryAccounting = () => {
       const current = summaryMap.get(barter.supplierName) ?? {
         supplierName: barter.supplierName,
         totalTons: 0,
+        totalBagCount: 0,
         totalAmount: 0,
         totalPaid: 0,
         totalDebt: 0,
@@ -1250,16 +1258,6 @@ export const useFactoryAccounting = () => {
     ].join('\n')
   }
 
-  const buildTelegramLink = (username: string) => {
-    const normalizedUsername = username.trim().replace(/^@/, '')
-
-    if (!normalizedUsername) {
-      return ''
-    }
-
-    return `https://t.me/${normalizedUsername}`
-  }
-
   const upsertReminder = (payload: Omit<ClientReminderSetting, 'id'> & { id?: string }, options?: { silent?: boolean }) => {
     if (!guardAdminMutation()) {
       return
@@ -1278,9 +1276,9 @@ export const useFactoryAccounting = () => {
         appendAuditLog({
           action: 'add',
           section: 'Qarzdorlar',
-          entityType: 'telegram-reminder',
+          entityType: 'reminder',
           recordId: normalizedPayload.id,
-          summary: `${normalizedPayload.clientName} uchun TG eslatma qo'shildi`,
+          summary: `${normalizedPayload.clientName} uchun eslatma qo'shildi`,
           after: normalizedPayload
         })
       }
@@ -1296,9 +1294,9 @@ export const useFactoryAccounting = () => {
       appendAuditLog({
         action: 'update',
         section: 'Qarzdorlar',
-        entityType: 'telegram-reminder',
+        entityType: 'reminder',
         recordId: reminders.value[existingIndex].id,
-        summary: `${normalizedPayload.clientName} uchun TG eslatma tahrirlandi`,
+        summary: `${normalizedPayload.clientName} uchun eslatma tahrirlandi`,
         before: previous,
         after: reminders.value[existingIndex]
       })
@@ -1317,9 +1315,9 @@ export const useFactoryAccounting = () => {
       appendAuditLog({
         action: 'delete',
         section: 'Qarzdorlar',
-        entityType: 'telegram-reminder',
+        entityType: 'reminder',
         recordId: existing.id,
-        summary: `${existing.clientName} uchun TG eslatma o'chirildi`,
+        summary: `${existing.clientName} uchun eslatma o'chirildi`,
         before: existing
       })
     }
@@ -1350,11 +1348,8 @@ export const useFactoryAccounting = () => {
         return {
           ...record,
           phone: profile.contact?.phone ?? '',
-          telegramChatId: profile.contact?.telegramChatId ?? '',
-          telegramUsername: profile.contact?.telegramUsername ?? '',
           debt: profile.summary?.totalDebt ?? 0,
-          active: record.enabled && (profile.summary?.totalDebt ?? 0) > 0,
-          readyForTelegram: Boolean(profile.contact?.telegramChatId)
+          active: record.enabled && (profile.summary?.totalDebt ?? 0) > 0
         }
       })
       .sort((left, right) => Number(right.active) - Number(left.active))
@@ -1500,9 +1495,6 @@ export const useFactoryAccounting = () => {
         type: 'client',
         name: clientName,
         phone: '',
-        telegramChatId: '',
-        telegramUsername: '',
-        address: '',
         notes: ''
       }, { silent: true })
     }
@@ -1522,11 +1514,71 @@ export const useFactoryAccounting = () => {
         type: 'supplier',
         name: supplierName,
         phone: '',
-        telegramChatId: '',
-        telegramUsername: '',
-        address: '',
         notes: ''
       }, { silent: true })
+    }
+  }
+
+  const addOpeningBalance = (payload: Omit<OpeningBalanceRecord, 'id' | 'productTons'>) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const record = normalizeOpeningBalanceRecord({
+      id: createId('opening'),
+      ...payload
+    })
+    openingBalances.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Ostatka',
+      entityType: 'opening-balance',
+      recordId: record.id,
+      summary: `${record.factory} boshlang'ich qoldig'i qo'shildi`,
+      after: record
+    })
+  }
+
+  const updateOpeningBalance = (payload: OpeningBalanceRecord) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const index = openingBalances.value.findIndex((record) => record.id === payload.id)
+
+    if (index !== -1) {
+      const previous = openingBalances.value[index]
+      const record = normalizeOpeningBalanceRecord(payload)
+      openingBalances.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Ostatka',
+        entityType: 'opening-balance',
+        recordId: record.id,
+        summary: `${record.factory} boshlang'ich qoldig'i tahrirlandi`,
+        before: previous,
+        after: record
+      })
+    }
+  }
+
+  const removeOpeningBalance = (id: string) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const existing = openingBalances.value.find((record) => record.id === id)
+    openingBalances.value = openingBalances.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Ostatka',
+        entityType: 'opening-balance',
+        recordId: existing.id,
+        summary: `${existing.factory} boshlang'ich qoldig'i o'chirildi`,
+        before: existing
+      })
     }
   }
 
@@ -2066,6 +2118,10 @@ export const useFactoryAccounting = () => {
           factory: record.factory,
           stoneTons: record.stoneBalance,
           productTons: record.productBalance,
+          melTons: record.remainingMelTons,
+          bagCount: record.remainingBagCount,
+          xiraBagCount: record.remainingXiraBagCount,
+          oqBagCount: record.remainingOqBagCount,
           notes: `${effectiveStartDate} uchun boshlang'ich qoldiq`
         })
       )
@@ -2074,8 +2130,11 @@ export const useFactoryAccounting = () => {
         id: createId('load'),
         date: effectiveStartDate,
         factory: record.lastFactory || '',
+        materialType: 'stone',
+        bagType: 'xira',
         vehicleType: 'Howo',
         tons: 0,
+        bagCount: 0,
         supplier: record.supplierName,
         pricePerTon: 0,
         totalAmount: record.balanceType === 'bizdan_qarz' ? record.balanceAmount : 0,
@@ -2100,6 +2159,7 @@ export const useFactoryAccounting = () => {
       items: [
         { label: 'Tosh qoldiq', amount: closingSummary.remainingStoneTons, section: 'note', note: 'Yangi davrga opening balance' },
         { label: 'Mahsulot qoldiq', amount: closingSummary.remainingProductTons, section: 'note', note: 'Yangi davrga opening balance' },
+        { label: 'Qop qoldiq', amount: closingSummary.remainingBagCount, section: 'note', note: 'Yangi davrga opening balance, dona' },
         { label: 'Klient qarzi', amount: preservedDebtSummaries.reduce((sum, record) => sum + record.totalDebt, 0), section: 'note', note: 'Manual debt opening' },
         { label: 'Supplier balansi', amount: preservedSupplierSummaries.reduce((sum, record) => sum + record.balanceAmount, 0), section: 'note', note: 'Tosh kirimi opening' }
       ]
@@ -2221,7 +2281,18 @@ export const useFactoryAccounting = () => {
       (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
     )
     const totalOpeningStoneTons = Number(opening.reduce((sum, record) => sum + record.stoneTons, 0).toFixed(2))
-    const totalOpeningProductTons = Number(opening.reduce((sum, record) => sum + record.productTons, 0).toFixed(2))
+    const totalOpeningMelTons = Number(opening.reduce((sum, record) => sum + record.melTons, 0).toFixed(2))
+    const totalOpeningProductTons = totalOpeningMelTons
+    const totalOpeningBagCount = opening.reduce((sum, record) => sum + record.bagCount, 0)
+    const totalIncomingBagCount = loads.reduce((sum, record) => sum + record.bagCount, 0)
+    const totalOpeningXiraBagCount = opening.reduce((sum, record) => sum + record.xiraBagCount, 0)
+    const totalOpeningOqBagCount = opening.reduce((sum, record) => sum + record.oqBagCount, 0)
+    const totalIncomingXiraBagCount = loads
+      .filter((record) => record.materialType === 'bag' && record.bagType === 'xira')
+      .reduce((sum, record) => sum + record.bagCount, 0)
+    const totalIncomingOqBagCount = loads
+      .filter((record) => record.materialType === 'bag' && record.bagType === 'oq')
+      .reduce((sum, record) => sum + record.bagCount, 0)
     const totalIncomingTons = Number((loads.reduce((sum, record) => sum + record.tons, 0) + totalOpeningStoneTons).toFixed(2))
     const totalIncomingAmount = Number(loads.reduce((sum, record) => sum + record.totalAmount, 0).toFixed(2))
     const totalUsedStoneTons = Number(daily.reduce((sum, record) => sum + record.usedStoneTons, 0).toFixed(2))
@@ -2232,6 +2303,15 @@ export const useFactoryAccounting = () => {
     const totalSoldBulkTons = 0
     const totalNewBags = daily.reduce((sum, record) => sum + record.newBagCount, 0)
     const totalOldBags = daily.reduce((sum, record) => sum + record.oldBagCount, 0)
+    const remainingBagCount = totalOpeningBagCount + totalIncomingBagCount - totalNewBags
+    const usedXiraBagCount = daily
+      .filter((record) => record.bagType === 'xira')
+      .reduce((sum, record) => sum + record.newBagCount, 0)
+    const usedOqBagCount = daily
+      .filter((record) => record.bagType === 'oq')
+      .reduce((sum, record) => sum + record.newBagCount, 0)
+    const remainingXiraBagCount = totalOpeningXiraBagCount + totalIncomingXiraBagCount - usedXiraBagCount
+    const remainingOqBagCount = totalOpeningOqBagCount + totalIncomingOqBagCount - usedOqBagCount
     const remainingStoneTons = Number((totalIncomingTons - totalUsedStoneTons).toFixed(2))
     const remainingBaggedTons = Number((totalBaggedTons - totalSoldBaggedTons).toFixed(2))
     const remainingBulkTons = 0
@@ -2240,6 +2320,11 @@ export const useFactoryAccounting = () => {
     const totalCost = Number((productionCost + extraExpensesTotal).toFixed(2))
     const totalSoldTons = Number(salesRecords.reduce((sum, record) => sum + record.tons, 0).toFixed(2))
     const remainingProductTons = Number((totalOutputTons - totalSoldTons).toFixed(2))
+    const totalMelTons = Number(
+      (daily.reduce((sum, record) => sum + record.baggedOutputTons, 0) + totalOpeningMelTons).toFixed(2)
+    )
+    const soldMelTons = totalSoldTons
+    const remainingMelTons = Number((totalMelTons - soldMelTons).toFixed(2))
     const totalRevenue = Number(salesRecords.reduce((sum, record) => sum + record.totalAmount, 0).toFixed(2))
     const totalPaid = Number(salesRecords.reduce((sum, record) => sum + record.paidAmount, 0).toFixed(2))
     const totalDebt = Number(
@@ -2385,7 +2470,18 @@ export const useFactoryAccounting = () => {
         const factorySales = salesRecords.filter((record) => record.factory === factoryName)
         const factoryExpenses = expenseRecords.filter((record) => record.factory === factoryName)
         const openingStoneTons = Number(factoryOpening.reduce((sum, record) => sum + record.stoneTons, 0).toFixed(2))
-        const openingProductTons = Number(factoryOpening.reduce((sum, record) => sum + record.productTons, 0).toFixed(2))
+        const openingMelTons = Number(factoryOpening.reduce((sum, record) => sum + record.melTons, 0).toFixed(2))
+        const openingProductTons = openingMelTons
+        const openingBagCount = factoryOpening.reduce((sum, record) => sum + record.bagCount, 0)
+        const incomingBagCount = factoryLoads.reduce((sum, record) => sum + record.bagCount, 0)
+        const openingXiraBagCount = factoryOpening.reduce((sum, record) => sum + record.xiraBagCount, 0)
+        const openingOqBagCount = factoryOpening.reduce((sum, record) => sum + record.oqBagCount, 0)
+        const incomingXiraBagCount = factoryLoads
+          .filter((record) => record.materialType === 'bag' && record.bagType === 'xira')
+          .reduce((sum, record) => sum + record.bagCount, 0)
+        const incomingOqBagCount = factoryLoads
+          .filter((record) => record.materialType === 'bag' && record.bagType === 'oq')
+          .reduce((sum, record) => sum + record.bagCount, 0)
         const incomingTons = Number((factoryLoads.reduce((sum, record) => sum + record.tons, 0) + openingStoneTons).toFixed(2))
         const usedStoneTons = Number(factoryDaily.reduce((sum, record) => sum + record.usedStoneTons, 0).toFixed(2))
         const outputTons = Number((factoryDaily.reduce((sum, record) => sum + getOutputTons(record), 0) + openingProductTons).toFixed(2))
@@ -2407,6 +2503,21 @@ export const useFactoryAccounting = () => {
         const remainingBaggedTons = Number((baggedOutputTons - soldBaggedTons).toFixed(2))
         const remainingBulkTons = 0
         const productBalance = Number((outputTons - soldTons).toFixed(2))
+        const producedMelTons = Number(
+          (factoryDaily.reduce((sum, record) => sum + record.baggedOutputTons, 0) + openingMelTons).toFixed(2)
+        )
+        const factorySoldMelTons = soldTons
+        const remainingMelTons = Number((producedMelTons - factorySoldMelTons).toFixed(2))
+        const usedBagCount = factoryDaily.reduce((sum, record) => sum + record.newBagCount, 0)
+        const remainingBagCount = openingBagCount + incomingBagCount - usedBagCount
+        const usedXiraBagCount = factoryDaily
+          .filter((record) => record.bagType === 'xira')
+          .reduce((sum, record) => sum + record.newBagCount, 0)
+        const usedOqBagCount = factoryDaily
+          .filter((record) => record.bagType === 'oq')
+          .reduce((sum, record) => sum + record.newBagCount, 0)
+        const remainingXiraBagCount = openingXiraBagCount + incomingXiraBagCount - usedXiraBagCount
+        const remainingOqBagCount = openingOqBagCount + incomingOqBagCount - usedOqBagCount
 
         return {
           factory: factoryName,
@@ -2421,6 +2532,10 @@ export const useFactoryAccounting = () => {
           soldBulkTons,
           remainingBaggedTons,
           remainingBulkTons,
+          remainingMelTons,
+          remainingBagCount,
+          remainingXiraBagCount,
+          remainingOqBagCount,
           productBalance,
           revenue,
           cost,
@@ -2428,7 +2543,7 @@ export const useFactoryAccounting = () => {
           profit
         }
       })
-      .filter((row) => row.incomingTons || row.outputTons || row.soldTons || row.revenue || row.cost)
+      .filter((row) => row.incomingTons || row.outputTons || row.soldTons || row.revenue || row.cost || row.remainingBagCount)
 
     const topClients = salesRecords
       .reduce<Array<{ clientName: string; tons: number; revenue: number; debt: number }>>((rows, sale) => {
@@ -2483,6 +2598,13 @@ export const useFactoryAccounting = () => {
       totalIncomingAmount,
       totalOpeningStoneTons,
       totalOpeningProductTons,
+      totalOpeningMelTons,
+      totalOpeningBagCount,
+      totalIncomingBagCount,
+      totalOpeningXiraBagCount,
+      totalOpeningOqBagCount,
+      totalIncomingXiraBagCount,
+      totalIncomingOqBagCount,
       totalUsedStoneTons,
       totalOutputTons,
       totalBaggedTons,
@@ -2491,6 +2613,9 @@ export const useFactoryAccounting = () => {
       totalSoldBulkTons,
       totalNewBags,
       totalOldBags,
+      remainingBagCount,
+      remainingXiraBagCount,
+      remainingOqBagCount,
       remainingStoneTons,
       remainingBaggedTons,
       remainingBulkTons,
@@ -2499,6 +2624,7 @@ export const useFactoryAccounting = () => {
       totalCost,
       totalSoldTons,
       remainingProductTons,
+      remainingMelTons,
       totalRevenue,
       totalPaid,
       totalDebt,
@@ -2580,7 +2706,6 @@ export const useFactoryAccounting = () => {
     getSupplierProfile,
     getClientReminder,
     buildSmsHref,
-    buildTelegramLink,
     buildSaleReceiptMessage,
     buildDebtReminderMessage,
     recentSales,
@@ -2596,6 +2721,9 @@ export const useFactoryAccounting = () => {
     addContact,
     updateContact,
     removeContact,
+    addOpeningBalance,
+    updateOpeningBalance,
+    removeOpeningBalance,
     updateDefaultCosts,
     addDailyRecord,
     updateDailyRecord,

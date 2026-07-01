@@ -8,10 +8,6 @@ const runtimeConfig = useRuntimeConfig()
 
 const products = [
   {
-    title: 'Qum',
-    text: "Qoplik formatda ishlab chiqariladi. Kunlik yuk chiqimi va balans nazorat qilinadi."
-  },
-  {
     title: 'Mel',
     text: "Mel mahsuloti qoplik formatda yuritiladi. Narx, klient va qarz bir joyda ko'rinadi."
   },
@@ -38,7 +34,7 @@ const products = [
           {{ t(runtimeConfig.public.appName) }}
         </h1>
         <p class="mt-4 max-w-3xl text-lg leading-8 text-slate-600 sm:text-xl">
-          {{ t("Qum, mel va tosh kirimini nazorat qiladigan ichki boshqaruv tizimi. Klient, qarzdorlik, ta'minotchi va oylik hisobotlar bitta joyda yuritiladi.") }}
+          {{ t("Mel va tosh kirimini nazorat qiladigan ichki boshqaruv tizimi. Klient, qarzdorlik, ta'minotchi va oylik hisobotlar bitta joyda yuritiladi.") }}
         </p>
 
         <div class="mt-8 grid gap-4 sm:grid-cols-2">

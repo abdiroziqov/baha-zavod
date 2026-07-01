@@ -316,7 +316,7 @@ const summary = computed(() => ({
   totalClients: filteredDebtors.value.length,
   totalInvoices: filteredDebtors.value.reduce((sum, record) => sum + record.invoiceCount, 0),
   totalPayments: filteredPayments.value.reduce((sum, record) => sum + record.amount, 0),
-  activeReminders: reminderList.value.filter((record) => record.active).length
+  activeReminders: reminderList.value.filter((record) => record.enabled).length
 }))
 
 const debtorRows = computed<Record<string, unknown>[]>(() =>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FactoryName, ManualDebtRecord, PaymentMethod, ReminderFrequency, SaleRecord } from '~/types/accounting'
+import type { FactoryName, ManualDebtRecord, PaymentMethod, SaleRecord } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
 
 definePageMeta({
@@ -27,7 +27,6 @@ const {
   manualDebts,
   payments,
   paymentMethods,
-  reminderFrequencies,
   latestDate,
   clientOptions,
   updateSale,
@@ -35,19 +34,12 @@ const {
   updateManualDebt,
   removeManualDebt,
   addPayment,
-  reminderList,
-  getClientReminder,
-  upsertReminder,
-  markReminderSent,
-  buildDebtReminderMessage,
-  buildTelegramLink,
   getClientProfile
 } = useFactoryAccounting()
 const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
 const { t } = useUiLocale()
-const telegramEnabled = false
 
 const filters = reactive({
   search: '',
@@ -78,25 +70,7 @@ const manualDebtForm = reactive({
 const deleteManualDebtDialogOpen = ref(false)
 const selectedManualDebt = ref<ManualDebtRecord | null>(null)
 
-const reminderModalOpen = ref(false)
-const reminderForm = reactive({
-  id: '',
-  clientName: '',
-  enabled: true,
-  frequency: 'daily' as ReminderFrequency,
-  time: '08:00',
-  notes: ''
-})
-
-const telegramModalOpen = ref(false)
-const telegramClientName = ref('')
-const copiedMessage = ref(false)
-const telegramError = ref('')
-const telegramSuccess = ref('')
-const telegramSending = ref(false)
-
-const debtorColumns = computed<TableColumn[]>(() => {
-  const columns: TableColumn[] = [
+const debtorColumns: TableColumn[] = [
     { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
     { key: 'phone', label: 'Telefon' },
     { key: 'totalTons', label: 'Tonna', align: 'right' },
@@ -104,14 +78,7 @@ const debtorColumns = computed<TableColumn[]>(() => {
     { key: 'totalPaid', label: 'To`langan', align: 'right' },
     { key: 'totalDebt', label: 'Qarz', align: 'right' },
     { key: 'actions', label: 'Amal', align: 'right' }
-  ]
-
-  if (telegramEnabled) {
-    columns.splice(columns.length - 1, 0, { key: 'reminder', label: 'TG eslatma' })
-  }
-
-  return columns
-})
+]
 
 const invoiceColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -133,16 +100,6 @@ const paymentColumns: TableColumn[] = [
   { key: 'paymentMethod', label: 'To`lov turi' },
   { key: 'saleDate', label: 'Asl sana' },
   { key: 'notes', label: 'Izoh' }
-]
-
-const reminderColumns: TableColumn[] = [
-  { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
-  { key: 'phone', label: 'Telefon' },
-  { key: 'debt', label: 'Qarz', align: 'right' },
-  { key: 'frequencyLabel', label: 'Davriylik' },
-  { key: 'time', label: 'Soat' },
-  { key: 'lastSentLabel', label: 'Oxirgi TG' },
-  { key: 'actions', label: 'Amal', align: 'right' }
 ]
 
 const matchesDateRange = (value: string) => {
@@ -341,23 +298,6 @@ const invoiceRows = computed<Record<string, unknown>[]>(() =>
 
 const paymentRows = computed<Record<string, unknown>[]>(() => [...filteredPayments.value])
 
-const reminderRows = computed<Record<string, unknown>[]>(() =>
-  reminderList.value
-    .filter((record) => record.active)
-    .map((record) => ({
-      ...record,
-      frequencyLabel: record.frequency === 'daily' ? 'Har kun' : '2 kunda bir',
-      lastSentLabel: record.lastSentAt ? formatDate(record.lastSentAt) : 'Yuborilmagan'
-    }))
-)
-
-const telegramClientProfile = computed(() => getClientProfile(telegramClientName.value))
-const telegramPhone = computed(() => telegramClientProfile.value.contact?.phone ?? '')
-const telegramChatId = computed(() => telegramClientProfile.value.contact?.telegramChatId ?? '')
-const telegramUsername = computed(() => telegramClientProfile.value.contact?.telegramUsername ?? '')
-const telegramMessage = computed(() => buildDebtReminderMessage(telegramClientName.value))
-const telegramProfileLink = computed(() => buildTelegramLink(telegramUsername.value))
-
 const openPaymentModal = (row: Record<string, unknown>) => {
   if (!isAdmin.value) {
     return
@@ -488,87 +428,6 @@ const confirmDeleteManualDebt = () => {
 
   removeManualDebt(selectedManualDebt.value.id)
   closeDeleteManualDebt()
-}
-
-const openTelegramModal = (clientName: string) => {
-  telegramClientName.value = clientName
-  copiedMessage.value = false
-  telegramError.value = ''
-  telegramSuccess.value = ''
-  telegramModalOpen.value = true
-}
-
-const openReminderModal = (clientName: string) => {
-  if (!isAdmin.value) {
-    return
-  }
-
-  const existingReminder = getClientReminder(clientName)
-
-  reminderForm.id = existingReminder?.id ?? ''
-  reminderForm.clientName = clientName
-  reminderForm.enabled = existingReminder?.enabled ?? true
-  reminderForm.frequency = existingReminder?.frequency ?? 'daily'
-  reminderForm.time = existingReminder?.time ?? '08:00'
-  reminderForm.notes = existingReminder?.notes ?? ''
-  reminderModalOpen.value = true
-}
-
-const saveReminder = () => {
-  if (!isAdmin.value) {
-    return
-  }
-
-  if (!reminderForm.clientName.trim()) {
-    return
-  }
-
-  upsertReminder({
-    id: reminderForm.id || undefined,
-    clientName: reminderForm.clientName.trim(),
-    enabled: reminderForm.enabled,
-    frequency: reminderForm.frequency,
-    time: reminderForm.time,
-    notes: reminderForm.notes.trim(),
-    lastSentAt: getClientReminder(reminderForm.clientName)?.lastSentAt ?? ''
-  })
-
-  reminderModalOpen.value = false
-}
-
-const sendTelegramMessage = async () => {
-  if (!isAdmin.value || !telegramClientName.value) {
-    return
-  }
-
-  telegramSending.value = true
-  telegramError.value = ''
-  telegramSuccess.value = ''
-
-  try {
-    const response = await $fetch<{ ok: boolean; sentAt: string }>('/api/notifications/telegram/send', {
-      method: 'POST',
-      body: {
-        clientName: telegramClientName.value
-      }
-    })
-
-    markReminderSent(telegramClientName.value, response.sentAt)
-    telegramSuccess.value = 'Telegram yuborildi.'
-  } catch (error) {
-    telegramError.value = error instanceof Error ? error.message : 'Telegram yuborishda xato.'
-  } finally {
-    telegramSending.value = false
-  }
-}
-
-const copyTelegramMessage = async () => {
-  if (!import.meta.client || !navigator.clipboard || !telegramMessage.value) {
-    return
-  }
-
-  await navigator.clipboard.writeText(telegramMessage.value)
-  copiedMessage.value = true
 }
 
 const savePayment = () => {
@@ -703,10 +562,6 @@ const clearFilters = () => {
           <span class="font-semibold text-rose-700">{{ formatSom(Number(value)) }}</span>
         </template>
 
-        <template v-if="telegramEnabled" #cell-reminder="{ value }">
-          <span class="text-xs text-slate-500">{{ value }}</span>
-        </template>
-
         <template #cell-actions="{ row }">
           <div class="flex justify-end gap-2">
             <button
@@ -724,14 +579,6 @@ const clearFilters = () => {
               @click="askDeleteManualDebt(row.editableManualDebt as ManualDebtRecord)"
             >
               O'chirish
-            </button>
-            <button
-              v-if="telegramEnabled && isAdmin"
-              type="button"
-              class="btn-secondary !px-3 !py-1.5 text-xs"
-              @click="openReminderModal(String(row.clientName))"
-            >
-              Eslatma
             </button>
           </div>
         </template>
@@ -801,37 +648,6 @@ const clearFilters = () => {
         </template>
       </AppTable>
     </article>
-  </section>
-
-  <section v-if="telegramEnabled" class="panel p-5">
-    <header class="mb-4">
-      <h3 class="text-base font-semibold text-slate-900">{{ t('Aktiv Telegram eslatmalar') }}</h3>
-      <p class="text-xs text-slate-500">Schedule saqlanadi. Bot token va klient chat id kiritilsa server o'zi yuboradi.</p>
-    </header>
-
-    <AppTable :columns="reminderColumns" :rows="reminderRows" empty-text="Aktiv eslatmalar yo'q.">
-      <template #cell-clientName="{ value }">
-        <span class="font-bold text-brand-700">{{ value }}</span>
-      </template>
-
-      <template #cell-debt="{ value }">
-        <span class="font-semibold text-rose-700">{{ formatSom(Number(value)) }}</span>
-      </template>
-
-      <template #cell-actions="{ row }">
-        <div class="flex justify-end gap-2">
-          <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openTelegramModal(String(row.clientName))">TG</button>
-          <button
-            v-if="isAdmin"
-            type="button"
-            class="btn-secondary !px-3 !py-1.5 text-xs"
-            @click="openReminderModal(String(row.clientName))"
-          >
-            Tahrirlash
-          </button>
-        </div>
-      </template>
-    </AppTable>
   </section>
 
   <section class="panel p-5">
@@ -946,101 +762,4 @@ const clearFilters = () => {
     </template>
   </AppModal>
 
-  <AppModal v-if="telegramEnabled" :open="reminderModalOpen" title="Telegram eslatma sozlamasi" size="sm" @close="reminderModalOpen = false">
-    <div class="space-y-4">
-      <div class="rounded-2xl bg-slate-50 p-4 text-sm">
-        <div class="flex items-center justify-between">
-          <span class="text-slate-500">Klient</span>
-          <strong class="text-slate-900">{{ reminderForm.clientName }}</strong>
-        </div>
-        <div class="mt-2 flex items-center justify-between">
-          <span class="text-slate-500">Hozirgi qarz</span>
-          <strong class="text-rose-700">{{ formatSom(getClientProfile(reminderForm.clientName).summary?.totalDebt ?? 0) }}</strong>
-        </div>
-      </div>
-
-      <div class="space-y-1.5">
-        <p class="text-sm font-medium text-slate-700">Holat</p>
-        <div class="flex gap-2">
-          <button
-            type="button"
-            :class="reminderForm.enabled ? 'btn-primary' : 'btn-secondary'"
-            @click="reminderForm.enabled = true"
-          >
-            Yoqilgan
-          </button>
-          <button
-            type="button"
-            :class="!reminderForm.enabled ? 'btn-primary' : 'btn-secondary'"
-            @click="reminderForm.enabled = false"
-          >
-            O`chiq
-          </button>
-        </div>
-      </div>
-      <AppSelect
-        v-model="reminderForm.frequency"
-        label="Davriylik"
-        :options="reminderFrequencies.map((item) => ({ label: item === 'daily' ? 'Har kun' : '2 kunda bir', value: item }))"
-      />
-      <AppInput v-model="reminderForm.time" type="time" label="Yuborish vaqti" />
-      <AppInput v-model="reminderForm.notes" label="Izoh" placeholder="Masalan, ertalab eslatma" />
-
-      <p class="text-xs text-slate-500">Bu schedule saqlanadi. Ertalab yuborish uchun vaqt qo'ying yoki `O'chiq` qiling.</p>
-    </div>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="reminderModalOpen = false">{{ t('Bekor qilish') }}</button>
-        <button v-if="isAdmin" type="button" class="btn-primary" @click="saveReminder">{{ t('Saqlash') }}</button>
-      </div>
-    </template>
-  </AppModal>
-
-  <AppModal v-if="telegramEnabled" :open="telegramModalOpen" title="Telegram eslatma" size="lg" @close="telegramModalOpen = false">
-    <div class="space-y-4">
-      <div class="grid gap-3 md:grid-cols-4">
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Klient</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ telegramClientName }}</p>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Telefon</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ telegramPhone || '-' }}</p>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Telegram chat ID</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ telegramChatId || '-' }}</p>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Qarz</p>
-          <p class="mt-1 text-sm font-semibold text-rose-700">{{ formatSom(telegramClientProfile.summary?.totalDebt ?? 0) }}</p>
-        </div>
-      </div>
-
-      <div class="rounded-2xl bg-slate-950 p-4 text-sm text-white">
-        <pre class="whitespace-pre-wrap font-mono">{{ telegramMessage }}</pre>
-      </div>
-
-      <div class="rounded-2xl bg-slate-50 p-4 text-sm">
-        <p class="text-xs text-slate-500">Telegram username</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ telegramUsername ? `@${telegramUsername}` : '-' }}</p>
-      </div>
-
-      <p v-if="copiedMessage" class="text-sm text-emerald-700">Xabar matni copy qilindi.</p>
-      <p v-if="telegramSuccess" class="text-sm text-emerald-700">{{ telegramSuccess }}</p>
-      <p v-if="telegramError" class="text-sm text-rose-700">{{ telegramError }}</p>
-      <p v-if="!telegramChatId" class="text-sm text-amber-700">Avtomatik yuborish uchun klient kartasiga Telegram chat ID kiriting.</p>
-    </div>
-
-    <template #footer>
-      <div class="flex flex-wrap justify-end gap-2">
-        <NuxtLink v-if="telegramProfileLink" :to="telegramProfileLink" target="_blank" class="btn-secondary">TG profil</NuxtLink>
-        <button type="button" class="btn-secondary" @click="copyTelegramMessage">Copy</button>
-        <button type="button" class="btn-primary" :disabled="!telegramChatId || telegramSending || !isAdmin" @click="sendTelegramMessage">
-          {{ telegramSending ? 'Yuborilmoqda...' : 'Telegram yuborish' }}
-        </button>
-      </div>
-    </template>
-  </AppModal>
 </template>

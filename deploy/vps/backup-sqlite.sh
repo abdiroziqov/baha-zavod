@@ -18,14 +18,9 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
   set +a
 fi
 
-notify_telegram() {
-  return 0
-}
-
 fail() {
   local message="${1:-Backup xatosi.}"
   echo "$message"
-  notify_telegram "Baha backup xatosi\n${message}"
   exit 1
 }
 
@@ -49,7 +44,5 @@ fi
 
 find "$BACKUP_DIR" -type f -name 'accounting-state-*.sqlite' -mtime +"$KEEP_DAYS" -delete || fail "Eski sqlite backupni tozalashda xato bo'ldi."
 find "$BACKUP_DIR" -type f -name 'accounting-state-*.json' -mtime +"$KEEP_DAYS" -delete || fail "Eski json backupni tozalashda xato bo'ldi."
-
-notify_telegram "Baha backup tayyor\nSana: ${STAMP}\nBackup papka: ${BACKUP_DIR}\nSaqlash muddati: ${KEEP_DAYS} kun"
 
 find "$BACKUP_DIR" -type f | sort

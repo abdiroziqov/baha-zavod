@@ -6,6 +6,7 @@ import type {
   AccountingStateSnapshot,
   AuditLogRecord,
   ArchiveFactoryScope,
+  BagType,
   BarterRecord,
   BalanceType,
   ClientReminderSetting,
@@ -33,6 +34,7 @@ import type {
   ScaleSyncMeta,
   SaleRecord,
   ShipmentType,
+  SupplyMaterialType,
   VehicleType
 } from '~/types/accounting'
 import barterSource from '~/data/mock/barter-records.json'
@@ -52,7 +54,7 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 const factories: FactoryName[] = ['Tepa shpaklevka', 'Tepa kraska', 'Past shpaklevka', 'Past kraska']
 const defaultFactory: FactoryName = 'Tepa shpaklevka'
-const productTypes: ProductType[] = ['Qum', 'Mel']
+const productTypes: ProductType[] = ['Mel']
 const vehicleTypes: VehicleType[] = ['Howo', 'Kamaz']
 const shipmentTypes: ShipmentType[] = ['qoplik']
 const expenseCategories: ExpenseCategory[] = [
@@ -188,7 +190,7 @@ const normalizeCostProfile = (value: unknown): CostProfile => {
 
 const normalizeDailyRecord = (record: unknown, profile: CostProfile): DailyFactoryRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<DailyFactoryRecord>) : {}
-  const productType = isProductType(source.productType) ? source.productType : 'Qum'
+  const productType: ProductType = 'Mel'
   const baggedOutputTons = asNumber(source.baggedOutputTons)
   const bulkOutputTons = normalizeBulkOutputTons(productType, asNumber(source.bulkOutputTons))
   const usedStoneTons = getUsedStoneTons({ baggedOutputTons, bulkOutputTons })
@@ -199,6 +201,7 @@ const normalizeDailyRecord = (record: unknown, profile: CostProfile): DailyFacto
     date: asString(source.date, todayIso()),
     factory: isFactory(source.factory) ? source.factory : defaultFactory,
     productType,
+    bagType: source.bagType === 'oq' ? 'oq' : 'xira',
     incomingStoneTons: usedStoneTons,
     usedStoneTons,
     baggedOutputTons,
@@ -211,11 +214,14 @@ const normalizeDailyRecord = (record: unknown, profile: CostProfile): DailyFacto
 
 const normalizeIncomingLoad = (record: unknown): IncomingLoadRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<IncomingLoadRecord>) : {}
-  const tons = asNumber(source.tons)
+  const materialType: SupplyMaterialType = source.materialType === 'bag' ? 'bag' : 'stone'
+  const tons = materialType === 'stone' ? asNumber(source.tons) : 0
+  const bagCount = materialType === 'bag' ? Math.max(Math.round(asNumber(source.bagCount)), 0) : 0
+  const quantity = materialType === 'bag' ? bagCount : tons
   const rawTotalAmount = asNumber(source.totalAmount)
   const fallbackPricePerTon = asNumber(source.pricePerTon)
-  const totalAmount = rawTotalAmount > 0 ? rawTotalAmount : getLoadTotal(tons, fallbackPricePerTon)
-  const pricePerTon = getLoadPricePerTon(tons, totalAmount)
+  const totalAmount = rawTotalAmount > 0 ? rawTotalAmount : getLoadTotal(quantity, fallbackPricePerTon)
+  const pricePerTon = getLoadPricePerTon(quantity, totalAmount)
   const paidAmount = asNumber(source.paidAmount, totalAmount)
   const remainingAmount = getRemainingAmount(totalAmount, paidAmount)
 
@@ -223,8 +229,11 @@ const normalizeIncomingLoad = (record: unknown): IncomingLoadRecord => {
     id: asString(source.id, createId('load')),
     date: asString(source.date, todayIso()),
     factory: isFactory(source.factory) ? source.factory : defaultFactory,
+    materialType,
+    bagType: source.bagType === 'oq' ? 'oq' : 'xira',
     vehicleType: isVehicleType(source.vehicleType) ? source.vehicleType : 'Howo',
     tons,
+    bagCount,
     supplier: asString(source.supplier),
     pricePerTon,
     totalAmount,
@@ -246,7 +255,7 @@ const normalizeSaleRecord = (record: unknown): SaleRecord => {
   const balanceType = getBalanceType(totalAmount, paidAmount)
   const balanceAmount = getBalanceAmount(totalAmount, paidAmount)
   const shipmentType = normalizeShipmentTypeForProduct(
-    asString(source.productName, 'Qum'),
+    'Mel',
     isShipmentType(source.shipmentType) ? source.shipmentType : 'qoplik'
   )
 
@@ -256,7 +265,7 @@ const normalizeSaleRecord = (record: unknown): SaleRecord => {
     time: asString(source.time),
     factory: isFactory(source.factory) ? source.factory : defaultFactory,
     clientName: asString(source.clientName),
-    productName: asString(source.productName, 'Qum'),
+    productName: 'Mel',
     shipmentType,
     tons,
     pricePerTon,
@@ -304,7 +313,7 @@ const normalizePaymentRecord = (record: unknown): PaymentRecord => {
 
 const normalizeBarterRecord = (record: unknown): BarterRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<BarterRecord>) : {}
-  const productName = source.productName === 'Mel' ? 'Mel' : 'Qum'
+  const productName: ProductType = 'Mel'
   const tons = asNumber(source.tons)
   const pricePerTon = asNumber(source.pricePerTon)
   const amount = asNumber(source.amount) || getSaleTotal(tons, pricePerTon)
@@ -347,9 +356,6 @@ const normalizeContactRecord = (record: unknown): ContactRecord => {
     type: source.type === 'supplier' ? 'supplier' : 'client',
     name: asString(source.name),
     phone: asString(source.phone),
-    telegramChatId: asString(source.telegramChatId),
-    telegramUsername: asString(source.telegramUsername),
-    address: asString(source.address),
     notes: asString(source.notes),
     createdAt: asString(source.createdAt, new Date().toISOString())
   }
@@ -407,7 +413,6 @@ const normalizeScaleEntry = (record: unknown): ScaleEntry => {
 
   return {
     id: asString(source.id, createId('scale')),
-    telegramUpdateId: asNumber(source.telegramUpdateId),
     date: asString(source.date, todayIso()),
     time: asString(source.time),
     direction: isScaleDirection(source.direction) ? source.direction : 'unknown',
@@ -447,21 +452,29 @@ const normalizeScaleCashEntry = (record: unknown): ScaleCashEntry => {
     paymentMethod: isPaymentMethod(source.paymentMethod) ? source.paymentMethod : 'Naqd',
     description: asString(source.description),
     notes: asString(source.notes),
-    source: source.source === 'telegram' ? 'telegram' : 'manual',
-    telegramUpdateId: asNumber(source.telegramUpdateId),
+    source: 'manual',
     createdAt: asString(source.createdAt, new Date().toISOString())
   }
 }
 
 const normalizeOpeningBalanceRecord = (record: unknown): OpeningBalanceRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<OpeningBalanceRecord>) : {}
+  const melTons = Number(
+    Math.max(asNumber(source.melTons, asNumber(source.productTons)), 0).toFixed(2)
+  )
+  const xiraBagCount = Math.max(Math.round(asNumber(source.xiraBagCount, asNumber(source.bagCount))), 0)
+  const oqBagCount = Math.max(Math.round(asNumber(source.oqBagCount)), 0)
 
   return {
     id: asString(source.id, createId('opening')),
     date: asString(source.date, todayIso()),
     factory: isFactory(source.factory) ? source.factory : defaultFactory,
     stoneTons: Number(Math.max(asNumber(source.stoneTons), 0).toFixed(2)),
-    productTons: Number(Math.max(asNumber(source.productTons), 0).toFixed(2)),
+    productTons: melTons,
+    melTons,
+    bagCount: xiraBagCount + oqBagCount,
+    xiraBagCount,
+    oqBagCount,
     notes: asString(source.notes)
   }
 }

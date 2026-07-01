@@ -13,11 +13,7 @@ export const getProductTypeFromText = (value: unknown): ProductType | null => {
     return 'Mel'
   }
 
-  if (normalizedValue.includes('qum')) {
-    return 'Qum'
-  }
-
-  return null
+  return 'Mel'
 }
 
 export const isBulkAllowedForProduct = (_value: unknown) => false

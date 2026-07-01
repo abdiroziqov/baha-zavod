@@ -11,7 +11,9 @@ const {
   productTypes,
   paymentMethods,
   clientOptions,
+  clientContacts,
   latestDate,
+  addContact,
   addSale,
   updateSale,
   removeSale,
@@ -33,7 +35,7 @@ const createFormState = (): Omit<
   time: '',
   factory: 'Tepa shpaklevka',
   clientName: '',
-  productName: 'Qum',
+  productName: 'Mel',
   shipmentType: 'qoplik',
   tons: 0,
   pricePerTon: 0,
@@ -56,6 +58,13 @@ const formError = ref('')
 
 const deleteDialogOpen = ref(false)
 const selectedSale = ref<SaleRecord | null>(null)
+const clientModalOpen = ref(false)
+const clientError = ref('')
+const clientForm = reactive({
+  name: '',
+  phone: '',
+  notes: ''
+})
 
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -354,7 +363,7 @@ const saveSale = () => {
     time: form.time,
     factory: form.factory as FactoryName,
     clientName: form.clientName.trim(),
-    productName: form.productName.trim() || 'Qum',
+    productName: 'Mel',
     shipmentType: 'qoplik' as const,
     tons: Number(form.tons),
     pricePerTon: Number(form.pricePerTon),
@@ -421,6 +430,47 @@ const confirmDelete = () => {
 const closeDelete = () => {
   selectedSale.value = null
   deleteDialogOpen.value = false
+}
+
+const openClientModal = () => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  Object.assign(clientForm, {
+    name: '',
+    phone: '',
+    notes: ''
+  })
+  clientError.value = ''
+  clientModalOpen.value = true
+}
+
+const saveClient = () => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  const name = clientForm.name.trim()
+
+  if (!name) {
+    clientError.value = 'Klient nomini kiriting.'
+    return
+  }
+
+  if (clientContacts.value.some((contact) => contact.name.trim().toLowerCase() === name.toLowerCase())) {
+    clientError.value = 'Bu klient ro`yxatda bor.'
+    return
+  }
+
+  addContact({
+    type: 'client',
+    name,
+    phone: clientForm.phone.trim(),
+    notes: clientForm.notes.trim()
+  })
+  form.clientName = name
+  clientModalOpen.value = false
 }
 
 const clearFilters = () => {
@@ -492,8 +542,15 @@ const applyLastSaleDefaults = () => {
     </article>
 
     <article class="panel p-4">
-      <p class="text-sm font-semibold text-slate-900">{{ t('Klient tanlash') }}</p>
-      <p class="mt-1 text-xs text-slate-500">{{ t("Yangi klient nomini sotuv qo'shish formasida yozing. Tizim o'zi ro'yxatga qo'shadi.") }}</p>
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-sm font-semibold text-slate-900">{{ t('Klientlar') }}</p>
+          <p class="mt-1 text-xs text-slate-500">{{ t("Klientni oldindan qo'shing yoki sotuv formasida nomini yozing.") }}</p>
+        </div>
+        <button v-if="isAdmin" type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openClientModal">
+          {{ t("Klient qo'shish") }}
+        </button>
+      </div>
       <div class="mt-4 flex flex-wrap gap-2">
         <span v-for="client in clientDirectory.slice(0, 8)" :key="client.id" class="data-chip">
           {{ client.clientName }}
@@ -557,13 +614,7 @@ const applyLastSaleDefaults = () => {
         />
       </div>
 
-      <AppSelect
-        v-model="form.productName"
-        label="Mahsulot turi"
-        :options="productTypes.map((item) => ({ label: item, value: item }))"
-        :invalid="Boolean(formError) && !form.productName"
-        required
-      />
+        <AppInput model-value="Mel" label="Mahsulot turi" disabled />
       <AppInput v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" :invalid="Boolean(formError) && Number(form.tons) <= 0" required />
       <AppInput
         v-model="form.pricePerTon"
@@ -647,10 +698,6 @@ const applyLastSaleDefaults = () => {
             <p class="mt-1 text-sm font-semibold text-slate-900">{{ activeClientContact?.phone || '-' }}</p>
           </div>
           <div class="rounded-2xl bg-white px-4 py-3">
-            <p class="text-xs text-slate-500">Manzil</p>
-            <p class="mt-1 text-sm font-semibold text-slate-900">{{ activeClientContact?.address || '-' }}</p>
-          </div>
-          <div class="rounded-2xl bg-white px-4 py-3">
             <p class="text-xs text-slate-500">Oxirgi sana</p>
             <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatDate(activeClientSummary.lastPurchaseDate) }}</p>
           </div>
@@ -700,7 +747,7 @@ const applyLastSaleDefaults = () => {
       </div>
 
       <div class="md:col-span-2">
-        <AppInput v-model="form.notes" label="Izoh" placeholder="Masalan, 20 tonna qum, Click orqali to`lov" />
+        <AppInput v-model="form.notes" label="Izoh" placeholder="Masalan, 20 tonna mel, Click orqali to`lov" />
       </div>
     </div>
 
@@ -717,6 +764,27 @@ const applyLastSaleDefaults = () => {
         <button type="button" class="btn-primary" @click="saveSale">
           {{ editingId ? t('Saqlash') : t("Qo`shish") }}
         </button>
+      </div>
+    </template>
+  </AppModal>
+
+  <AppModal :open="clientModalOpen" title="Klient qo`shish" size="lg" @close="clientModalOpen = false">
+    <div class="grid gap-4 md:grid-cols-2">
+      <AppInput v-model="clientForm.name" label="Nomi" :invalid="Boolean(clientError) && !clientForm.name.trim()" required />
+      <AppInput v-model="clientForm.phone" label="Telefon" placeholder="+998..." />
+      <div class="md:col-span-2">
+        <AppInput v-model="clientForm.notes" label="Izoh" />
+      </div>
+    </div>
+
+    <p v-if="clientError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+      {{ clientError }}
+    </p>
+
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn-secondary" @click="clientModalOpen = false">{{ t('Bekor qilish') }}</button>
+        <button type="button" class="btn-primary" @click="saveClient">{{ t("Qo`shish") }}</button>
       </div>
     </template>
   </AppModal>
