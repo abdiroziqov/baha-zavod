@@ -43,15 +43,15 @@ const getCellValue = (key: string, value: unknown) => {
 </script>
 
 <template>
-  <div class="w-full max-w-full overflow-x-auto">
-    <table class="min-w-full border-separate border-spacing-0 text-sm">
+  <div class="mobile-table-scroll w-full max-w-full overflow-x-auto overscroll-x-contain">
+    <table class="min-w-full whitespace-nowrap border-separate border-spacing-0 text-sm">
       <thead>
         <tr>
           <th
             v-for="column in columns"
             :key="column.key"
             :class="[
-              'border-b border-slate-200 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500',
+              'border-b border-slate-200 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:px-4',
               cellAlignmentClass(column.align),
               column.headerClass
             ]"
@@ -78,7 +78,7 @@ const getCellValue = (key: string, value: unknown) => {
             v-for="column in columns"
             :key="column.key"
             :class="[
-              'border-b border-slate-100 px-4 py-3 align-middle text-slate-700',
+              'border-b border-slate-100 px-3 py-3 align-middle text-slate-700 sm:px-4',
               cellAlignmentClass(column.align),
               column.cellClass
             ]"

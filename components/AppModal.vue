@@ -59,10 +59,10 @@ onUnmounted(() => {
     <Transition name="fade">
       <div
         v-if="open"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-3 py-3 sm:px-4 sm:py-6"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 sm:items-center sm:px-4 sm:py-6"
         @click.self="onBackdropClick"
       >
-        <div :class="['panel flex max-h-[calc(100dvh-1.5rem)] w-full flex-col overflow-hidden sm:max-h-[calc(100dvh-3rem)]', sizeClass]">
+        <div :class="['panel flex max-h-[calc(100dvh-0.5rem)] w-full flex-col overflow-hidden rounded-b-none sm:max-h-[calc(100dvh-3rem)] sm:rounded-2xl', sizeClass]">
           <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-5">
             <h3 class="text-base font-semibold text-slate-900">{{ t(title) }}</h3>
             <button
@@ -78,7 +78,7 @@ onUnmounted(() => {
             <slot />
           </div>
 
-          <div v-if="$slots.footer" class="shrink-0 border-t border-slate-200 px-4 py-3 sm:px-5">
+          <div v-if="$slots.footer" class="shrink-0 border-t border-slate-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
             <slot name="footer" />
           </div>
         </div>

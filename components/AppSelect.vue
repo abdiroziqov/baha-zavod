@@ -147,8 +147,15 @@ const updateDropdownPosition = () => {
   const opensUp = spaceBelow < 180 && spaceAbove > spaceBelow
   const dropdownHeight = Math.min(dropdownRef.value?.offsetHeight || maxHeight, maxHeight)
 
-  dropdownStyle.left = `${rect.left}px`
-  dropdownStyle.width = `${rect.width}px`
+  const availableWidth = window.innerWidth - viewportPadding * 2
+  const dropdownWidth = Math.min(rect.width, availableWidth)
+  const dropdownLeft = Math.min(
+    Math.max(viewportPadding, rect.left),
+    window.innerWidth - viewportPadding - dropdownWidth
+  )
+
+  dropdownStyle.left = `${dropdownLeft}px`
+  dropdownStyle.width = `${dropdownWidth}px`
   dropdownStyle.maxHeight = `${maxHeight}px`
   dropdownStyle.top = opensUp
     ? `${Math.max(viewportPadding, rect.top - dropdownHeight - gap)}px`

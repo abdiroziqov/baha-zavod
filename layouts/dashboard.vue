@@ -26,7 +26,7 @@ const closeSidebar = () => {
     <div :class="['min-w-0 transition-[padding] duration-200', desktopSidebarOpen ? 'lg:pl-64' : 'lg:pl-0']">
       <AppHeader @toggle-sidebar="toggleSidebar" />
 
-      <main class="min-w-0 space-y-6 overflow-x-hidden p-4 lg:p-6">
+      <main class="min-w-0 space-y-4 overflow-x-hidden p-3 sm:space-y-6 sm:p-4 lg:p-6">
         <slot />
       </main>
     </div>

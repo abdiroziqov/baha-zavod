@@ -57,3 +57,47 @@ body .text-sm {
 .supplier-highlight-chip {
   @apply inline-flex rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800;
 }
+
+@media (max-width: 639px) {
+  body {
+    background: #f1f5f9;
+  }
+
+  .panel {
+    @apply rounded-xl;
+  }
+
+  .page-title {
+    @apply text-xl;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    min-height: 44px;
+  }
+
+  main > section.flex.flex-wrap.items-center.justify-between {
+    align-items: stretch;
+  }
+
+  main > section.flex.flex-wrap.items-center.justify-between > div:last-child {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  main > section.flex.flex-wrap.items-center.justify-between > div:last-child > button,
+  main > section.flex.flex-wrap.items-center.justify-between > button {
+    flex: 1 1 10rem;
+  }
+
+  .mobile-table-scroll {
+    margin-inline: -0.75rem;
+    width: calc(100% + 1.5rem);
+    max-width: none;
+    padding-inline: 0.75rem;
+    scrollbar-width: thin;
+  }
+}

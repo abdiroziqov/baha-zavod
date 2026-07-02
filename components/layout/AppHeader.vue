@@ -85,11 +85,11 @@ const handleLogout = async () => {
 
 <template>
   <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-    <div class="flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-3 lg:h-16 lg:flex-nowrap lg:px-6 lg:py-0">
+    <div class="flex min-h-16 flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:h-16 lg:flex-nowrap lg:px-6 lg:py-0">
       <div class="flex min-w-0 flex-1 items-center gap-3">
         <button
           type="button"
-          class="inline-flex shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600"
+          class="inline-flex h-11 shrink-0 items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600"
           @click="emit('toggleSidebar')"
         >
           {{ t('Menu') }}
@@ -102,18 +102,18 @@ const handleLogout = async () => {
             </NuxtLink>
             · {{ today }}
           </p>
-          <div class="mt-2 flex flex-wrap gap-2 md:hidden">
-            <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <div class="mt-2 hidden gap-2 overflow-x-auto pb-1 sm:flex md:hidden">
+            <div class="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{{ t('Oxirgi data') }}</p>
               <p class="text-xs font-bold text-slate-900">{{ latestDateLabel }}</p>
               <p class="text-[10px] text-slate-500">{{ latestDateSubtitle }}</p>
             </div>
-            <div class="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2">
+            <div class="shrink-0 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2">
               <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-700">{{ t('Keyingi sana') }}</p>
               <p class="text-xs font-bold text-brand-900">{{ suggestedDateLabel }}</p>
               <p class="text-[10px] text-brand-700">{{ suggestedDateSubtitle }}</p>
             </div>
-            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+            <div class="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
               <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{{ t('USD kursi') }}</p>
               <p class="text-xs font-bold text-emerald-900">{{ usdRateLabel }}</p>
             </div>
@@ -156,11 +156,11 @@ const handleLogout = async () => {
           <p class="text-sm font-semibold text-slate-800">{{ user?.name }}</p>
           <p class="text-xs uppercase tracking-wide text-slate-500">{{ t(String(user?.role ?? '-')) }}</p>
         </div>
-        <button type="button" class="btn-secondary px-3 sm:px-4" @click="handleLogout">{{ t('Chiqish') }}</button>
+        <button type="button" class="btn-secondary h-11 px-3 sm:px-4" @click="handleLogout">{{ t('Chiqish') }}</button>
       </div>
     </div>
 
-    <div class="border-t border-slate-200 px-4 py-3 lg:hidden">
+    <div class="border-t border-slate-200 px-3 py-2 sm:px-4 sm:py-3 lg:hidden">
       <div class="flex gap-2 overflow-x-auto pb-1">
         <NuxtLink
           v-for="item in mainNavigation"
@@ -175,8 +175,8 @@ const handleLogout = async () => {
         </NuxtLink>
       </div>
 
-      <div v-if="manualNavigation.length" class="mt-3">
-        <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{{ t("Qo'lda kiritish") }}</p>
+      <div v-if="manualNavigation.length" class="mt-2">
+        <p class="sr-only">{{ t("Qo'lda kiritish") }}</p>
         <div class="flex gap-2 overflow-x-auto pb-1">
           <NuxtLink
             v-for="item in manualNavigation"

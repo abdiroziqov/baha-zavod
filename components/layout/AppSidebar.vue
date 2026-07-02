@@ -36,17 +36,25 @@ const isActive = (path: string) => {
 
   <aside
     :class="[
-      'fixed inset-y-0 left-0 z-40 flex h-screen w-64 flex-col overflow-hidden border-r border-slate-200 bg-white transition-transform lg:z-20',
+      'fixed inset-y-0 left-0 z-40 flex h-[100dvh] w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-slate-200 bg-white shadow-2xl transition-transform lg:z-20 lg:w-64 lg:shadow-none',
       open ? 'translate-x-0' : '-translate-x-full',
       desktopOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full'
     ]"
   >
-    <div class="shrink-0 border-b border-slate-200 px-4 py-4">
+    <div class="flex shrink-0 items-start gap-2 border-b border-slate-200 px-4 py-4">
       <NuxtLink to="/dashboard" class="block rounded-xl transition hover:bg-slate-50" @click="emit('close')">
         <p class="text-[10px] font-semibold uppercase tracking-[0.34em] text-brand-600">{{ t('Korxona') }}</p>
         <h2 class="mt-1 text-lg font-black tracking-tight text-slate-900">{{ t(runtimeConfig.public.appName) }}</h2>
         <p class="mt-1 text-xs text-slate-500">{{ t(runtimeConfig.public.appSubtitle) }}</p>
       </NuxtLink>
+      <button
+        type="button"
+        class="ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-600 lg:hidden"
+        aria-label="Menu yopish"
+        @click="emit('close')"
+      >
+        X
+      </button>
     </div>
 
     <nav class="flex-1 space-y-4 overflow-y-auto p-3 pb-6">
