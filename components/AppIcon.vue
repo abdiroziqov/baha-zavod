@@ -2,7 +2,7 @@
 type IconName =
   | 'dashboard'
   | 'audit'
-  | 'barter'
+  | 'cash'
   | 'production'
   | 'raw-materials'
   | 'inventory'
@@ -54,7 +54,7 @@ defineProps<Props>()
   </svg>
 
   <svg
-    v-else-if="name === 'barter'"
+    v-else-if="name === 'cash'"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -63,10 +63,9 @@ defineProps<Props>()
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <path d="M7 7h11" />
-    <path d="m14 4 4 3-4 3" />
-    <path d="M17 17H6" />
-    <path d="m10 14-4 3 4 3" />
+    <rect x="3" y="6" width="18" height="12" rx="2" />
+    <circle cx="12" cy="12" r="3" />
+    <path d="M7 9h.01M17 15h.01" />
   </svg>
 
   <svg

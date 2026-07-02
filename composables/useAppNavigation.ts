@@ -3,7 +3,7 @@ import type { UserRole } from '~/types/auth'
 export type NavigationIcon =
   | 'dashboard'
   | 'audit'
-  | 'barter'
+  | 'cash'
   | 'production'
   | 'raw-materials'
   | 'inventory'
@@ -24,7 +24,7 @@ export interface NavigationItem {
 const navigationItems: NavigationItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: 'dashboard', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Audit Log', to: '/audit', icon: 'audit', roles: ['admin'], group: 'main' },
-  { label: 'Barter DB', to: '/barter', icon: 'barter', roles: ['admin', 'manager', 'operator'], group: 'main' },
+  { label: 'Pul', to: '/cash', icon: 'cash', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Kunlik Hisob', to: '/production', icon: 'production', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: "Ta'minotchilar", to: '/raw-materials', icon: 'raw-materials', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Ostatka', to: '/inventory', icon: 'inventory', roles: ['admin', 'manager', 'operator'], group: 'main' },

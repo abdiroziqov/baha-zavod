@@ -149,7 +149,11 @@ const expensesSummary = computed(() => {
   }
 })
 
-const chalkBaggedCostPerTon = computed(() => getCostPerTon(costForm, 'Mel'))
+const kraskaXiraCostPerTon = computed(() => getCostPerTon(costForm, 'Kraska', 'xira'))
+const kraskaOqCostPerTon = computed(() => getCostPerTon(costForm, 'Kraska', 'oq'))
+const chalkXiraCostPerTon = computed(() => getCostPerTon(costForm, 'Mel', 'xira'))
+const chalkOqCostPerTon = computed(() => getCostPerTon(costForm, 'Mel', 'oq'))
+const kraskaSalePricePerTon = computed(() => getDefaultSalePricePerTon(costForm, 'Kraska'))
 const chalkSalePricePerTon = computed(() => getDefaultSalePricePerTon(costForm, 'Mel'))
 const tableRows = computed<Record<string, unknown>[]>(() => [...filteredExpenses.value])
 
@@ -285,7 +289,8 @@ const saveDefaultCosts = () => {
     supervisorCostPerTon: Number(costForm.supervisorCostPerTon),
     electricityCostPerTon: Number(costForm.electricityCostPerTon),
     stoneCostPerTon: Number(costForm.stoneCostPerTon),
-    bagCostPerTon: Number(costForm.bagCostPerTon)
+    xiraBagCostPerTon: Number(costForm.xiraBagCostPerTon),
+    oqBagCostPerTon: Number(costForm.oqBagCostPerTon)
   })
 }
 
@@ -327,7 +332,10 @@ watch(
     <StatCard title="Jami chiqim" :value="formatSom(expensesSummary.total)" subtitle="filtrlangan yozuvlar" />
     <StatCard title="Yozuvlar" :value="expensesSummary.count" subtitle="chiqimlar soni" />
     <StatCard title="Kategoriya" :value="expensesSummary.categories" subtitle="faol turlar" />
-    <StatCard title="Mel qoplik" :value="formatSom(chalkBaggedCostPerTon)" subtitle="1 kg tannarx" />
+    <StatCard title="Kraska · Xira qop" :value="formatSom(kraskaXiraCostPerTon)" subtitle="1 kg tannarx" />
+    <StatCard title="Kraska · Oq qop" :value="formatSom(kraskaOqCostPerTon)" subtitle="1 kg tannarx" />
+    <StatCard title="Mel · Xira qop" :value="formatSom(chalkXiraCostPerTon)" subtitle="1 kg tannarx" />
+    <StatCard title="Mel · Oq qop" :value="formatSom(chalkOqCostPerTon)" subtitle="1 kg tannarx" />
   </section>
 
   <section class="panel p-4">
@@ -387,38 +395,49 @@ watch(
           <h3 class="text-base font-semibold text-slate-900">Avtomatik tannarx sozlamasi</h3>
           <p class="text-xs text-slate-500">Bu qiymatlar o'zgarsa kunlik hisob, dashboard va hisobotlar avtomatik yangilanadi</p>
         </div>
-        <span class="data-chip">Mel qoplik = {{ formatSom(chalkBaggedCostPerTon) }} / kg</span>
+        <span class="data-chip">Xira va oq qop tannarxi alohida</span>
       </header>
 
-      <div class="mb-4 grid gap-3">
+      <div class="mb-4 grid gap-3 md:grid-cols-2">
         <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
-          <p class="text-xs text-sky-700">Mel kraska sotuv narxi / kg</p>
+          <p class="text-xs text-sky-700">Kraska sotuv narxi / kg</p>
+          <p class="mt-1 text-lg font-semibold text-sky-900">{{ formatSom(kraskaSalePricePerTon) }}</p>
+        </div>
+        <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+          <p class="text-xs text-sky-700">Mel sotuv narxi / kg</p>
           <p class="mt-1 text-lg font-semibold text-sky-900">{{ formatSom(chalkSalePricePerTon) }}</p>
         </div>
       </div>
 
-      <div class="mb-4 grid gap-3">
+      <div class="mb-4 grid gap-3 md:grid-cols-2">
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Mel qoplik 1 kg</p>
-          <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(chalkBaggedCostPerTon) }}</p>
+          <p class="text-xs text-slate-500">Kraska · Xira / Oq qop</p>
+          <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(kraskaXiraCostPerTon) }} / {{ formatSom(kraskaOqCostPerTon) }}</p>
+        </div>
+        <div class="rounded-2xl bg-slate-50 px-4 py-3">
+          <p class="text-xs text-slate-500">Mel · Xira / Oq qop</p>
+          <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(chalkXiraCostPerTon) }} / {{ formatSom(chalkOqCostPerTon) }}</p>
         </div>
       </div>
 
       <div class="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        `450` sotuv narxi `/kg`. Tannarxga kirmaydi. Qoplik tannarxida `ishchi + bozorliq + ortib berish + ovqat + boshqaruvchi + svet + tosh + qop`
+        `450` sotuv narxi `/kg`. Tannarxga kirmaydi. Qoplik tannarxida `ishchi + qo‘shimcha xarajat + ortib berish + ovqat + boshqaruvchi + svet + tosh + tanlangan qop`
         hisoblanadi.
       </div>
 
       <div class="grid gap-3 md:grid-cols-2">
-        <AppInput v-model="costForm.chalkPricePerTon" type="number" min="0" step="0.01" label="Mel kraska sotuv narxi / kg" :disabled="!isAdmin" />
+        <AppInput v-model="costForm.sandPricePerTon" type="number" min="0" step="0.01" label="Kraska sotuv narxi / kg" :disabled="!isAdmin" />
+        <AppInput v-model="costForm.chalkPricePerTon" type="number" min="0" step="0.01" label="Mel sotuv narxi / kg" :disabled="!isAdmin" />
+        <AppInput v-model="costForm.sandWorkerCostPerTon" type="number" min="0" step="0.01" label="Kraska ishchi" :disabled="!isAdmin" />
         <AppInput v-model="costForm.chalkWorkerCostPerTon" type="number" min="0" step="0.01" label="Mel ishchi" :disabled="!isAdmin" />
-        <AppInput v-model="costForm.marketCostPerTon" type="number" min="0" step="0.01" label="Bozorliq" :disabled="!isAdmin" />
+        <AppInput v-model="costForm.marketCostPerTon" type="number" min="0" step="0.01" label="Qo‘shimcha xarajat" :disabled="!isAdmin" />
         <AppInput v-model="costForm.loadingCostPerTon" type="number" min="0" step="0.01" label="Ortib berish" :disabled="!isAdmin" />
         <AppInput v-model="costForm.foodCostPerTon" type="number" min="0" step="0.01" label="Ovqat" :disabled="!isAdmin" />
         <AppInput v-model="costForm.supervisorCostPerTon" type="number" min="0" step="0.01" label="Boshqaruvchi" :disabled="!isAdmin" />
         <AppInput v-model="costForm.electricityCostPerTon" type="number" min="0" step="0.01" label="Svet" :disabled="!isAdmin" />
         <AppInput v-model="costForm.stoneCostPerTon" type="number" min="0" step="0.01" label="Tosh" :disabled="!isAdmin" />
-        <AppInput v-model="costForm.bagCostPerTon" type="number" min="0" step="0.01" label="Qop" :disabled="!isAdmin" />
+        <AppInput v-model="costForm.xiraBagCostPerTon" type="number" min="0" step="0.01" label="Xira qop narxi" :disabled="!isAdmin" />
+        <AppInput v-model="costForm.oqBagCostPerTon" type="number" min="0" step="0.01" label="Oq qop narxi" :disabled="!isAdmin" />
       </div>
 
       <div v-if="isAdmin" class="mt-4 flex justify-end gap-2">
@@ -427,8 +446,8 @@ watch(
       </div>
 
       <div class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        `Mel` uchun ishchi `40`. `Mel kraska sotuv narxi / kg` saqlanadi, lekin tannarxga qo'shilmaydi.
-        `Bozorliq` ishlab chiqarilgan jami mahsulotga qo'shiladi.
+        Kraska va Mel ishchi tannarxi alohida. Sotuv narxlari tannarxga qo'shilmaydi.
+        `Qo‘shimcha xarajat` ishlab chiqarilgan jami mahsulotga qo'shiladi. Qop narxi kunlik hisobda tanlangan qop turidan olinadi.
       </div>
     </article>
   </section>

@@ -2,7 +2,7 @@ export type UiLocale = 'latn' | 'cyrl'
 
 const exactTranslations: Record<string, string> = {
   Dashboard: 'Дашборд',
-  'Barter DB': 'Бартер ДБ',
+  Pul: 'Пул',
   'Kunlik Hisob': 'Кунлик Ҳисоб',
   'Tosh Kirimi': 'Тош Кирими',
   "Ta'minotchilar": 'Таъминотчилар',

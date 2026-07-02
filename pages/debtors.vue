@@ -34,7 +34,9 @@ const {
   updateManualDebt,
   removeManualDebt,
   addPayment,
-  getClientProfile
+  getClientProfile,
+  getClientReminder,
+  reminderList
 } = useFactoryAccounting()
 const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()

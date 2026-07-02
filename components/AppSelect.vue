@@ -40,6 +40,7 @@ const selectId = computed(() => props.id || `select-${generatedId}`)
 const wrapperRef = ref<HTMLElement | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const dropdownOpen = ref(false)
+const dropdownPositioned = ref(false)
 const dropdownStyle = reactive({
   left: '0px',
   top: '0px',
@@ -82,12 +83,14 @@ const openDropdown = () => {
     return
   }
 
+  dropdownPositioned.value = false
   dropdownOpen.value = true
   void nextTick(updateDropdownPosition)
 }
 
 const closeDropdown = () => {
   dropdownOpen.value = false
+  dropdownPositioned.value = false
 }
 
 const toggleDropdown = () => {
@@ -98,7 +101,10 @@ const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value
 
   if (dropdownOpen.value) {
+    dropdownPositioned.value = false
     void nextTick(updateDropdownPosition)
+  } else {
+    dropdownPositioned.value = false
   }
 }
 
@@ -147,6 +153,7 @@ const updateDropdownPosition = () => {
   dropdownStyle.top = opensUp
     ? `${Math.max(viewportPadding, rect.top - dropdownHeight - gap)}px`
     : `${Math.min(rect.bottom + gap, window.innerHeight - viewportPadding - maxHeight)}px`
+  dropdownPositioned.value = true
 }
 
 onMounted(() => {
@@ -235,6 +242,7 @@ const selectClasses = computed(() => [
           v-if="dropdownOpen"
           ref="dropdownRef"
           class="fixed z-[1000] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl"
+          :class="dropdownPositioned ? 'visible' : 'invisible'"
           :style="dropdownStyle"
         >
           <button

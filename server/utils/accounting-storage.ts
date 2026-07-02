@@ -54,14 +54,14 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 const factories: FactoryName[] = ['Tepa shpaklevka', 'Tepa kraska', 'Past shpaklevka', 'Past kraska']
 const defaultFactory: FactoryName = 'Tepa shpaklevka'
-const productTypes: ProductType[] = ['Mel']
+const productTypes: ProductType[] = ['Kraska', 'Mel']
 const vehicleTypes: VehicleType[] = ['Howo', 'Kamaz']
 const shipmentTypes: ShipmentType[] = ['qoplik']
 const expenseCategories: ExpenseCategory[] = [
   'Ishchi',
   'Ovqat',
   'Svet',
-  'Bozorlik',
+  'Qo‘shimcha xarajat',
   'Yuklash',
   'Soliq',
   'Boshqa'
@@ -84,7 +84,8 @@ const defaultCostProfile: CostProfile = {
   supervisorCostPerTon: 10,
   electricityCostPerTon: 30,
   stoneCostPerTon: 70,
-  bagCostPerTon: 20
+  xiraBagCostPerTon: 20,
+  oqBagCostPerTon: 20
 }
 
 const KG_PER_TON = 1000
@@ -104,6 +105,10 @@ const isShipmentType = (value: unknown): value is ShipmentType =>
 const isExpenseCategory = (value: unknown): value is ExpenseCategory =>
   typeof value === 'string' && expenseCategories.includes(value as ExpenseCategory)
 const normalizeExpenseCategory = (value: unknown): ExpenseCategory => {
+  if (value === 'Bozorlik') {
+    return 'Qo‘shimcha xarajat'
+  }
+
   if (isExpenseCategory(value)) {
     return value
   }
@@ -171,6 +176,7 @@ const getPaymentStatus = (totalAmount: number, paidAmount: number): PaymentStatu
 
 const normalizeCostProfile = (value: unknown): CostProfile => {
   const profile = typeof value === 'object' && value ? (value as Partial<CostProfile>) : {}
+  const legacyBagCost = asNumber((profile as Partial<CostProfile> & { bagCostPerTon?: number }).bagCostPerTon, 20)
   const chalkPricePerTon = asNumber(profile.chalkPricePerTon, defaultCostProfile.chalkPricePerTon)
 
   return {
@@ -184,13 +190,14 @@ const normalizeCostProfile = (value: unknown): CostProfile => {
     supervisorCostPerTon: asNumber(profile.supervisorCostPerTon, defaultCostProfile.supervisorCostPerTon),
     electricityCostPerTon: asNumber(profile.electricityCostPerTon, defaultCostProfile.electricityCostPerTon),
     stoneCostPerTon: asNumber(profile.stoneCostPerTon, defaultCostProfile.stoneCostPerTon),
-    bagCostPerTon: asNumber(profile.bagCostPerTon, defaultCostProfile.bagCostPerTon)
+    xiraBagCostPerTon: asNumber(profile.xiraBagCostPerTon, legacyBagCost),
+    oqBagCostPerTon: asNumber(profile.oqBagCostPerTon, legacyBagCost)
   }
 }
 
 const normalizeDailyRecord = (record: unknown, profile: CostProfile): DailyFactoryRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<DailyFactoryRecord>) : {}
-  const productType: ProductType = 'Mel'
+  const productType: ProductType = source.productType === 'Kraska' ? 'Kraska' : 'Mel'
   const baggedOutputTons = asNumber(source.baggedOutputTons)
   const bulkOutputTons = normalizeBulkOutputTons(productType, asNumber(source.bulkOutputTons))
   const usedStoneTons = getUsedStoneTons({ baggedOutputTons, bulkOutputTons })
@@ -255,7 +262,7 @@ const normalizeSaleRecord = (record: unknown): SaleRecord => {
   const balanceType = getBalanceType(totalAmount, paidAmount)
   const balanceAmount = getBalanceAmount(totalAmount, paidAmount)
   const shipmentType = normalizeShipmentTypeForProduct(
-    'Mel',
+    asString(source.productName, 'Mel'),
     isShipmentType(source.shipmentType) ? source.shipmentType : 'qoplik'
   )
 
@@ -265,7 +272,7 @@ const normalizeSaleRecord = (record: unknown): SaleRecord => {
     time: asString(source.time),
     factory: isFactory(source.factory) ? source.factory : defaultFactory,
     clientName: asString(source.clientName),
-    productName: 'Mel',
+    productName: source.productName === 'Kraska' ? 'Kraska' : 'Mel',
     shipmentType,
     tons,
     pricePerTon,
@@ -313,7 +320,7 @@ const normalizePaymentRecord = (record: unknown): PaymentRecord => {
 
 const normalizeBarterRecord = (record: unknown): BarterRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<BarterRecord>) : {}
-  const productName: ProductType = 'Mel'
+  const productName: ProductType = source.productName === 'Kraska' ? 'Kraska' : 'Mel'
   const tons = asNumber(source.tons)
   const pricePerTon = asNumber(source.pricePerTon)
   const amount = asNumber(source.amount) || getSaleTotal(tons, pricePerTon)
@@ -462,6 +469,7 @@ const normalizeOpeningBalanceRecord = (record: unknown): OpeningBalanceRecord =>
   const melTons = Number(
     Math.max(asNumber(source.melTons, asNumber(source.productTons)), 0).toFixed(2)
   )
+  const kraskaTons = Number(Math.max(asNumber(source.kraskaTons), 0).toFixed(2))
   const xiraBagCount = Math.max(Math.round(asNumber(source.xiraBagCount, asNumber(source.bagCount))), 0)
   const oqBagCount = Math.max(Math.round(asNumber(source.oqBagCount)), 0)
 
@@ -470,7 +478,8 @@ const normalizeOpeningBalanceRecord = (record: unknown): OpeningBalanceRecord =>
     date: asString(source.date, todayIso()),
     factory: isFactory(source.factory) ? source.factory : defaultFactory,
     stoneTons: Number(Math.max(asNumber(source.stoneTons), 0).toFixed(2)),
-    productTons: melTons,
+    productTons: kraskaTons + melTons,
+    kraskaTons,
     melTons,
     bagCount: xiraBagCount + oqBagCount,
     xiraBagCount,
@@ -518,7 +527,7 @@ const buildSeedState = (): AccountingStateSnapshot => ({
   sales: (salesSource as unknown[]).map((record) => normalizeSaleRecord(record)),
   manualDebts: (manualDebtsSource as unknown[]).map((record) => normalizeManualDebtRecord(record)),
   payments: (paymentsSource as unknown[]).map((record) => normalizePaymentRecord(record)),
-  barterRecords: (barterSource as unknown[]).map((record) => normalizeBarterRecord(record)),
+  barterRecords: [],
   expenses: (expensesSource as unknown[]).map((record) => normalizeExpenseRecord(record)),
   contacts: (contactsSource as unknown[]).map((record) => normalizeContactRecord(record)),
   reminders: [],
@@ -550,7 +559,7 @@ export const normalizeAccountingState = (snapshot: unknown): AccountingStateSnap
     sales: Array.isArray(source.sales) ? source.sales.map((record) => normalizeSaleRecord(record)) : [],
     manualDebts: Array.isArray(source.manualDebts) ? source.manualDebts.map((record) => normalizeManualDebtRecord(record)) : [],
     payments: Array.isArray(source.payments) ? source.payments.map((record) => normalizePaymentRecord(record)) : [],
-    barterRecords: Array.isArray(source.barterRecords) ? source.barterRecords.map((record) => normalizeBarterRecord(record)) : [],
+    barterRecords: [],
     expenses: Array.isArray(source.expenses) ? source.expenses.map((record) => normalizeExpenseRecord(record)) : [],
     contacts: Array.isArray(source.contacts) ? source.contacts.map((record) => normalizeContactRecord(record)) : [],
     reminders: Array.isArray(source.reminders) ? source.reminders.map((record) => normalizeReminderRecord(record)) : [],

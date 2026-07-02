@@ -145,7 +145,7 @@ const profitRows = computed<Record<string, unknown>[]>(() => [...summary.value.c
 const productionCostRows = computed<Record<string, unknown>[]>(() => [
   { label: 'Ishchi', value: summary.value.productionComponentTotals.worker },
   { label: 'Ortib berish', value: summary.value.productionComponentTotals.loading },
-  { label: 'Bozorliq', value: summary.value.productionComponentTotals.market },
+  { label: 'Qo‘shimcha xarajat', value: summary.value.productionComponentTotals.market },
   { label: 'Ovqat', value: summary.value.productionComponentTotals.food },
   { label: 'Boshqaruvchi', value: summary.value.productionComponentTotals.supervisor },
   { label: 'Svet', value: summary.value.productionComponentTotals.electricity },
@@ -416,7 +416,7 @@ const confirmOperationalReset = () => {
     <StatCard title="Tosh sarfi" :value="formatTons(summary.totalUsedStoneTons)" subtitle="ishlatilgan tosh" />
     <StatCard title="Qop" :value="summary.totalNewBags" subtitle="ishlatilgan yangi qop" />
     <StatCard title="Ishchi" :value="formatSom(summary.productionComponentTotals.worker)" subtitle="avtomatik ishlab chiqarish" />
-    <StatCard title="Bozorliq" :value="formatSom(summary.productionComponentTotals.market)" subtitle="avtomatik ishlab chiqarish" />
+    <StatCard title="Qo‘shimcha xarajat" :value="formatSom(summary.productionComponentTotals.market)" subtitle="avtomatik ishlab chiqarish" />
     <StatCard title="Pitaniya" :value="formatSom(summary.productionComponentTotals.food)" subtitle="ovqat xarajati" />
     <StatCard title="Svet" :value="formatSom(summary.productionComponentTotals.electricity)" subtitle="elektr energiya" />
     <StatCard title="Ortib berish" :value="formatSom(summary.productionComponentTotals.loading)" subtitle="faqat qoplik" />

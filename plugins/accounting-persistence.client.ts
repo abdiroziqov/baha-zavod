@@ -39,7 +39,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       sales: sales.value,
       manualDebts: manualDebts.value,
       payments: payments.value,
-      barterRecords: barterRecords.value,
+      barterRecords: [],
       expenses: expenses.value,
       contacts: contacts.value,
       reminders: reminders.value,
@@ -49,7 +49,13 @@ export default defineNuxtPlugin((nuxtApp) => {
     })
 
     const applySnapshot = (snapshot: AccountingStateSnapshot) => {
-      defaultCosts.value = snapshot.defaultCosts
+      const legacyBagCost = Number((snapshot.defaultCosts as typeof snapshot.defaultCosts & { bagCostPerTon?: number }).bagCostPerTon ?? 20)
+      defaultCosts.value = {
+        ...defaultCostProfile,
+        ...snapshot.defaultCosts,
+        xiraBagCostPerTon: Number(snapshot.defaultCosts.xiraBagCostPerTon ?? legacyBagCost),
+        oqBagCostPerTon: Number(snapshot.defaultCosts.oqBagCostPerTon ?? legacyBagCost)
+      }
       openingBalances.value = snapshot.openingBalances ?? []
       dailyRecords.value = snapshot.dailyRecords
       incomingLoads.value = snapshot.incomingLoads
@@ -59,7 +65,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       sales.value = snapshot.sales
       manualDebts.value = snapshot.manualDebts
       payments.value = snapshot.payments
-      barterRecords.value = snapshot.barterRecords
+      barterRecords.value = []
       expenses.value = snapshot.expenses
       contacts.value = snapshot.contacts
       reminders.value = snapshot.reminders

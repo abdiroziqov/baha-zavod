@@ -33,6 +33,7 @@ const form = reactive({
   date: new Date().toISOString().slice(0, 10),
   factory: 'Tepa shpaklevka' as FactoryName,
   stoneTons: 0,
+  kraskaTons: 0,
   melTons: 0,
   xiraBagCount: 0,
   oqBagCount: 0,
@@ -44,6 +45,7 @@ const summary = computed(() => buildSummary(filters.startDate, filters.endDate, 
 const balanceColumns: TableColumn[] = [
   { key: 'factory', label: 'Zavod' },
   { key: 'stoneBalance', label: 'Tosh qoldiq', align: 'right' },
+  { key: 'remainingKraskaTons', label: 'Kraska qoldiq', align: 'right' },
   { key: 'remainingMelTons', label: 'Mel qoldiq', align: 'right' },
   { key: 'remainingXiraBagCount', label: 'Xira qop', align: 'right' },
   { key: 'remainingOqBagCount', label: 'Oq qop', align: 'right' }
@@ -53,6 +55,7 @@ const openingColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
   { key: 'factory', label: 'Zavod' },
   { key: 'stoneTons', label: 'Tosh', align: 'right' },
+  { key: 'kraskaTons', label: 'Kraska', align: 'right' },
   { key: 'melTons', label: 'Mel', align: 'right' },
   { key: 'xiraBagCount', label: 'Xira qop', align: 'right' },
   { key: 'oqBagCount', label: 'Oq qop', align: 'right' },
@@ -77,6 +80,7 @@ const resetForm = () => {
     date: new Date().toISOString().slice(0, 10),
     factory: 'Tepa shpaklevka',
     stoneTons: 0,
+    kraskaTons: 0,
     melTons: 0,
     xiraBagCount: 0,
     oqBagCount: 0,
@@ -99,6 +103,7 @@ const openEditModal = (row: Record<string, unknown>) => {
     date: record.date,
     factory: record.factory,
     stoneTons: record.stoneTons,
+    kraskaTons: record.kraskaTons,
     melTons: record.melTons,
     xiraBagCount: record.xiraBagCount,
     oqBagCount: record.oqBagCount,
@@ -117,7 +122,7 @@ const saveOpening = () => {
     return
   }
 
-  if ([form.stoneTons, form.melTons, form.xiraBagCount, form.oqBagCount].some((value) => Number(value) < 0)) {
+  if ([form.stoneTons, form.kraskaTons, form.melTons, form.xiraBagCount, form.oqBagCount].some((value) => Number(value) < 0)) {
     formError.value = 'Qoldiq manfiy bo`lmasligi kerak.'
     return
   }
@@ -126,6 +131,7 @@ const saveOpening = () => {
     date: form.date,
     factory: form.factory,
     stoneTons: Number(form.stoneTons),
+    kraskaTons: Number(form.kraskaTons),
     melTons: Number(form.melTons),
     xiraBagCount: Math.round(Number(form.xiraBagCount)),
     oqBagCount: Math.round(Number(form.oqBagCount)),
@@ -136,7 +142,7 @@ const saveOpening = () => {
   if (editingId.value) {
     updateOpeningBalance({
       id: editingId.value,
-      productTons: payload.melTons,
+      productTons: payload.kraskaTons + payload.melTons,
       ...payload
     })
   } else {
@@ -199,6 +205,9 @@ const confirmDelete = () => {
     <StatCard title="Mel qoldiq" :value="formatTons(summary.remainingMelTons)" subtitle="boshlang'ich + ishlab chiqdi - sotildi">
       <template #icon>ML</template>
     </StatCard>
+    <StatCard title="Kraska qoldiq" :value="formatTons(summary.remainingKraskaTons)" subtitle="boshlang'ich + ishlab chiqdi - sotildi">
+      <template #icon>KR</template>
+    </StatCard>
     <StatCard title="Xira qop" :value="summary.remainingXiraBagCount" subtitle="kirim - ishlatilgan">
       <template #icon>XQ</template>
     </StatCard>
@@ -230,6 +239,12 @@ const confirmDelete = () => {
           </span>
         </template>
 
+        <template #cell-remainingKraskaTons="{ value }">
+          <span :class="['font-semibold', balanceClass(Number(value))]">
+            {{ formatTons(Number(value)) }}
+          </span>
+        </template>
+
         <template #cell-remainingXiraBagCount="{ value }">
           <span :class="['font-semibold', balanceClass(Number(value))]">
             {{ Number(value).toLocaleString('uz-UZ') }} dona
@@ -254,7 +269,7 @@ const confirmDelete = () => {
         <div class="rounded-2xl bg-amber-50 px-4 py-3 text-amber-800">
           <p class="font-semibold text-amber-900">O'tgan oydan qolgan qoldiq</p>
           <p class="mt-1">
-            `Boshlang'ich qoldiq qo'shish` orqali sana, zavod, tosh, Mel va qop qoldig'ini kiriting.
+            `Boshlang'ich qoldiq qo'shish` orqali sana, zavod, tosh, Kraska, Mel va qop qoldig'ini kiriting.
             Keyingi oylar `Hisobotlar`dagi `Oy yopish` orqali avtomatik ko'chadi.
           </p>
         </div>
@@ -283,6 +298,7 @@ const confirmDelete = () => {
     <AppTable :columns="openingColumns" :rows="openingRows" empty-text="Boshlang'ich qoldiq kiritilmagan.">
       <template #cell-date="{ value }">{{ formatDate(String(value)) }}</template>
       <template #cell-stoneTons="{ value }">{{ formatTons(Number(value)) }}</template>
+      <template #cell-kraskaTons="{ value }">{{ formatTons(Number(value)) }}</template>
       <template #cell-melTons="{ value }">{{ formatTons(Number(value)) }}</template>
       <template #cell-xiraBagCount="{ value }">{{ Number(value).toLocaleString('uz-UZ') }} dona</template>
       <template #cell-oqBagCount="{ value }">{{ Number(value).toLocaleString('uz-UZ') }} dona</template>
@@ -302,6 +318,7 @@ const confirmDelete = () => {
       <AppInput v-model="form.date" type="date" label="Yangi davr sanasi" required />
       <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" required />
       <AppInput v-model="form.stoneTons" type="number" min="0" step="0.01" label="Tosh qoldiq (t)" />
+      <AppInput v-model="form.kraskaTons" type="number" min="0" step="0.01" label="Kraska qoldiq (t)" />
       <AppInput v-model="form.melTons" type="number" min="0" step="0.01" label="Mel qoldiq (t)" />
       <AppInput v-model="form.xiraBagCount" type="number" min="0" step="1" label="Xira qop qoldiq (dona)" />
       <AppInput v-model="form.oqBagCount" type="number" min="0" step="1" label="Oq qop qoldiq (dona)" />

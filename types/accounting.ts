@@ -1,7 +1,7 @@
 import type { UserRole } from '~/types/auth'
 
 export type FactoryName = 'Tepa shpaklevka' | 'Tepa kraska' | 'Past shpaklevka' | 'Past kraska'
-export type ProductType = 'Mel'
+export type ProductType = 'Kraska' | 'Mel'
 export type VehicleType = 'Howo' | 'Kamaz'
 export type SupplyMaterialType = 'stone' | 'bag'
 export type BagType = 'xira' | 'oq'
@@ -13,7 +13,7 @@ export type ExpenseCategory =
   | 'Ishchi'
   | 'Ovqat'
   | 'Svet'
-  | 'Bozorlik'
+  | 'Qo‘shimcha xarajat'
   | 'Yuklash'
   | 'Soliq'
   | 'Boshqa'
@@ -52,7 +52,8 @@ export interface CostProfile {
   supervisorCostPerTon: number
   electricityCostPerTon: number
   stoneCostPerTon: number
-  bagCostPerTon: number
+  xiraBagCostPerTon: number
+  oqBagCostPerTon: number
 }
 
 export interface DailyFactoryRecord extends CostProfile {
@@ -291,6 +292,7 @@ export interface OpeningBalanceRecord {
   factory: FactoryName
   stoneTons: number
   productTons: number
+  kraskaTons: number
   melTons: number
   bagCount: number
   xiraBagCount: number

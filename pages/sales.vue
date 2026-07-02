@@ -10,6 +10,7 @@ const {
   sales,
   productTypes,
   paymentMethods,
+  factoryOptions,
   clientOptions,
   clientContacts,
   latestDate,
@@ -363,7 +364,7 @@ const saveSale = () => {
     time: form.time,
     factory: form.factory as FactoryName,
     clientName: form.clientName.trim(),
-    productName: 'Mel',
+    productName: form.productName,
     shipmentType: 'qoplik' as const,
     tons: Number(form.tons),
     pricePerTon: Number(form.pricePerTon),
@@ -372,8 +373,8 @@ const saveSale = () => {
     notes: form.notes.trim()
   }
 
-  if (!payload.date || !payload.clientName) {
-    formError.value = 'Sana va klientni tanlang.'
+  if (!payload.date || !payload.factory || !payload.clientName) {
+    formError.value = 'Sana, zavod va klientni tanlang.'
     return
   }
 
@@ -600,8 +601,15 @@ const applyLastSaleDefaults = () => {
     <div class="grid gap-4 md:grid-cols-2">
       <AppInput v-model="form.date" type="date" label="Sana" :invalid="Boolean(formError) && !form.date" required />
       <AppInput v-model="form.time" type="time" label="Soat" />
+      <AppSelect
+        v-model="form.factory"
+        label="Zavod"
+        :options="factoryOptions"
+        :invalid="Boolean(formError) && !form.factory"
+        required
+      />
 
-      <div class="md:col-span-2">
+      <div>
         <AppSelect
           v-model="form.clientName"
           label="Klient"
@@ -614,7 +622,12 @@ const applyLastSaleDefaults = () => {
         />
       </div>
 
-        <AppInput model-value="Mel" label="Mahsulot turi" disabled />
+        <AppSelect
+          v-model="form.productName"
+          label="Mahsulot turi"
+          :options="productTypes.map((item) => ({ label: item, value: item }))"
+          required
+        />
       <AppInput v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" :invalid="Boolean(formError) && Number(form.tons) <= 0" required />
       <AppInput
         v-model="form.pricePerTon"

@@ -29,6 +29,7 @@ const createFactories = factoryNames
 
 type DailyFactoryCreateState = {
   productType: ProductType
+  bagType: 'xira' | 'oq'
   baggedOutputTons: number
   bulkOutputTons: number
   notes: string
@@ -76,6 +77,15 @@ const createForms = reactive(
   Object.fromEntries(createFactories.map((factory) => [factory, createFactoryState()])) as Record<FactoryName, DailyFactoryCreateState>
 )
 const createSharedExpenses = ref<SharedExpenseRow[]>([])
+const addWorkerAdvance = () => {
+  createSharedExpenses.value.push({
+    category: 'Ishchi',
+    description: 'Avans',
+    amount: 0,
+    paymentMethod: 'Naqd',
+    notes: ''
+  })
+}
 const form = reactive<Omit<DailyFactoryRecord, 'id'>>(createFormState())
 const modalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -141,13 +151,14 @@ const tableRows = computed<Record<string, unknown>[]>(() =>
 
 const costItems = computed(() => [
   { label: 'Mel ishchi', value: defaultCosts.value.chalkWorkerCostPerTon },
-  { label: 'Bozorliq', value: defaultCosts.value.marketCostPerTon },
+  { label: 'Qo‘shimcha xarajat', value: defaultCosts.value.marketCostPerTon },
   { label: 'Ortib berish', value: defaultCosts.value.loadingCostPerTon },
   { label: 'Ovqat', value: defaultCosts.value.foodCostPerTon },
   { label: 'Boshqaruvchi', value: defaultCosts.value.supervisorCostPerTon },
   { label: 'Svet', value: defaultCosts.value.electricityCostPerTon },
   { label: 'Tosh', value: defaultCosts.value.stoneCostPerTon },
-  { label: 'Qop', value: defaultCosts.value.bagCostPerTon }
+  { label: 'Xira qop', value: defaultCosts.value.xiraBagCostPerTon },
+  { label: 'Oq qop', value: defaultCosts.value.oqBagCostPerTon }
 ])
 
 const getCreateFactoryState = (factory: FactoryName) => createForms[factory]
@@ -163,7 +174,7 @@ const getCreateFactoryUsedStoneTons = (factory: FactoryName) =>
   })
 const getCreateFactoryBagCount = (factory: FactoryName) => getBagCount(Number(getCreateFactoryState(factory).baggedOutputTons))
 const getCreateFactoryBaggedCostPerTon = (factory: FactoryName) =>
-  getCostPerTon(defaultCosts.value, getCreateFactoryState(factory).productType)
+  getCostPerTon(defaultCosts.value, getCreateFactoryState(factory).productType, getCreateFactoryState(factory).bagType)
 const getCreateFactoryBaggedTotalCost = (factory: FactoryName) =>
   getSaleTotal(Number(getCreateFactoryState(factory).baggedOutputTons), getCreateFactoryBaggedCostPerTon(factory))
 const getCreateFactoryCostBreakdown = (factory: FactoryName) =>
@@ -171,7 +182,8 @@ const getCreateFactoryCostBreakdown = (factory: FactoryName) =>
     defaultCosts.value,
     getCreateFactoryState(factory).productType,
     Number(getCreateFactoryState(factory).baggedOutputTons),
-    0
+    0,
+    getCreateFactoryState(factory).bagType
   )
 const getCreateFactoryTotalCost = (factory: FactoryName) =>
   Number(getCreateFactoryBaggedTotalCost(factory).toFixed(2))
@@ -190,7 +202,7 @@ const createSummary = computed(() => ({
   totalExtraExpenses: createSharedExpenseTotal.value
 }))
 
-const formBaggedCostPerTon = computed(() => getCostPerTon(defaultCosts.value, form.productType))
+const formBaggedCostPerTon = computed(() => getCostPerTon(defaultCosts.value, form.productType, form.bagType))
 const formOutputTons = computed(() =>
   getOutputTons({
     baggedOutputTons: Number(form.baggedOutputTons),
@@ -203,7 +215,8 @@ const formCostBreakdown = computed(() =>
     defaultCosts.value,
     form.productType,
     Number(form.baggedOutputTons),
-    0
+    0,
+    form.bagType
   )
 )
 const formTotalCost = computed(() => Number(formBaggedTotalCost.value.toFixed(2)))
@@ -627,7 +640,7 @@ watch(
                   <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(getCreateFactoryCostBreakdown(factory).loading) }}</p>
                 </div>
                 <div class="rounded-2xl bg-white px-4 py-3">
-                  <p class="text-xs text-slate-500">Bozorliq</p>
+                  <p class="text-xs text-slate-500">Qo‘shimcha xarajat</p>
                   <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(getCreateFactoryCostBreakdown(factory).market) }}</p>
                 </div>
                 <div class="md:col-span-2">
@@ -641,10 +654,13 @@ watch(
             <div class="mb-3 flex items-center justify-between">
               <div>
                 <h4 class="text-base font-semibold text-slate-900">Umumiy qo'shimcha harajatlar</h4>
-                <p class="text-xs text-slate-500">Barcha zavodlarga umumiy bo'lgan bozorliq, pagruzka, ishchi puli, avans va boshqa chiqimlar</p>
+                <p class="text-xs text-slate-500">Barcha zavodlarga umumiy bo'lgan qo‘shimcha xarajat, pagruzka, ishchi puli, avans va boshqa chiqimlar</p>
               </div>
               <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="addCreateSharedExpense">
                 Harajat qo'shish
+              </button>
+              <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="addWorkerAdvance">
+                Ishchi avansi
               </button>
             </div>
 
@@ -665,7 +681,7 @@ watch(
                     label="Kategoriya"
                     :options="expenseCategories.map((item) => ({ label: item, value: item }))"
                   />
-                  <AppInput v-model="expense.description" label="Tavsif" placeholder="Masalan, bozorliq yoki zavod ishchi puli" />
+                  <AppInput v-model="expense.description" label="Tavsif" placeholder="Masalan, qo‘shimcha xarajat yoki zavod ishchi puli" />
                   <AppInput v-model="expense.amount" type="number" min="0" step="0.01" label="Summa" />
                   <AppSelect
                     v-model="expense.paymentMethod"
@@ -751,7 +767,7 @@ watch(
               <strong class="text-slate-900">{{ formatSom(formCostBreakdown.loading) }}</strong>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-slate-500">Bozorliq</span>
+              <span class="text-slate-500">Qo‘shimcha xarajat</span>
               <strong class="text-slate-900">{{ formatSom(formCostBreakdown.market) }}</strong>
             </div>
             <div class="flex items-center justify-between">
