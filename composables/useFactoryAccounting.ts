@@ -101,6 +101,10 @@ export const expenseCategories: ExpenseCategory[] = [
   'Svet',
   'Qo‘shimcha xarajat',
   'Yuklash',
+  'Tosh',
+  'Xira qop',
+  'Oq qop',
+  'Zavod qarzi',
   'Soliq',
   'Boshqa'
 ]
@@ -498,6 +502,30 @@ const normalizeScaleCashEntryRecord = (record: Partial<ScaleCashEntry>): ScaleCa
   createdAt: record.createdAt ?? new Date().toISOString()
 })
 
+const normalizeExpenseRecord = (record: Partial<OperationalExpense>): OperationalExpense => {
+  const category = expenseCategories.includes(record.category as ExpenseCategory) ? (record.category as ExpenseCategory) : 'Boshqa'
+  const materialType: SupplyMaterialType | '' = category === 'Tosh'
+    ? 'stone'
+    : category === 'Xira qop' || category === 'Oq qop'
+      ? 'bag'
+      : ''
+  const bagType: BagType | '' = category === 'Oq qop' ? 'oq' : category === 'Xira qop' ? 'xira' : ''
+
+  return {
+    id: record.id ?? createId('exp'),
+    date: record.date ?? new Date().toISOString().slice(0, 10),
+    factory: factories.includes(record.factory as FactoryName) ? (record.factory as FactoryName) : '',
+    category,
+    description: record.description?.trim() ?? '',
+    amount: Number(Math.max(record.amount ?? 0, 0).toFixed(2)),
+    paymentMethod: paymentMethods.includes(record.paymentMethod as PaymentMethod) ? (record.paymentMethod as PaymentMethod) : 'Naqd',
+    materialType,
+    bagType,
+    materialQuantity: materialType ? Number(Math.max(record.materialQuantity ?? 0, 0).toFixed(materialType === 'stone' ? 2 : 0)) : 0,
+    notes: record.notes?.trim() ?? ''
+  }
+}
+
 const normalizeManualDebtRecord = (record: Partial<ManualDebtRecord>): ManualDebtRecord => {
   const amount = Number(record.amount ?? 0)
   const paidAmount = Number(record.paidAmount ?? 0)
@@ -622,7 +650,7 @@ export const useFactoryAccounting = () => {
   )
   const expenses = useState<OperationalExpense[]>(
     'accounting:expenses',
-    () => clone(seedExpenses)
+    () => clone(seedExpenses).map((record) => normalizeExpenseRecord(record))
   )
   const reminders = useState<ClientReminderSetting[]>(
     'accounting:reminders',
@@ -2099,10 +2127,10 @@ export const useFactoryAccounting = () => {
       return
     }
 
-    const record = {
+    const record = normalizeExpenseRecord({
       id: createId('exp'),
       ...payload
-    }
+    })
     expenses.value.unshift(record)
     appendAuditLog({
       action: 'add',
@@ -2123,9 +2151,7 @@ export const useFactoryAccounting = () => {
 
     if (index !== -1) {
       const previous = expenses.value[index]
-      const record = {
-        ...payload
-      }
+      const record = normalizeExpenseRecord(payload)
       expenses.value[index] = record
       appendAuditLog({
         action: 'update',
@@ -2371,7 +2397,13 @@ export const useFactoryAccounting = () => {
       .reduce((sum, record) => sum + record.bagCount, 0)
     const totalIncomingTons = Number((loads.reduce((sum, record) => sum + record.tons, 0) + totalOpeningStoneTons).toFixed(2))
     const totalIncomingAmount = Number(loads.reduce((sum, record) => sum + record.totalAmount, 0).toFixed(2))
-    const totalUsedStoneTons = Number(daily.reduce((sum, record) => sum + record.usedStoneTons, 0).toFixed(2))
+    const totalExpenseStoneTons = Number(
+      expenseRecords
+        .filter((record) => record.materialType === 'stone')
+        .reduce((sum, record) => sum + record.materialQuantity, 0)
+        .toFixed(2)
+    )
+    const totalUsedStoneTons = Number((daily.reduce((sum, record) => sum + record.usedStoneTons, 0) + totalExpenseStoneTons).toFixed(2))
     const totalOutputTons = Number((daily.reduce((sum, record) => sum + getOutputTons(record), 0) + totalOpeningProductTons).toFixed(2))
     const totalBaggedTons = Number((daily.reduce((sum, record) => sum + record.baggedOutputTons, 0) + totalOpeningProductTons).toFixed(2))
     const totalBulkTons = 0
@@ -2379,15 +2411,22 @@ export const useFactoryAccounting = () => {
     const totalSoldBulkTons = 0
     const totalNewBags = daily.reduce((sum, record) => sum + record.newBagCount, 0)
     const totalOldBags = daily.reduce((sum, record) => sum + record.oldBagCount, 0)
-    const remainingBagCount = totalOpeningBagCount + totalIncomingBagCount - totalNewBags
+    const expenseXiraBagCount = expenseRecords
+      .filter((record) => record.materialType === 'bag' && record.bagType === 'xira')
+      .reduce((sum, record) => sum + Math.round(record.materialQuantity), 0)
+    const expenseOqBagCount = expenseRecords
+      .filter((record) => record.materialType === 'bag' && record.bagType === 'oq')
+      .reduce((sum, record) => sum + Math.round(record.materialQuantity), 0)
+    const totalExpenseBagCount = expenseXiraBagCount + expenseOqBagCount
+    const remainingBagCount = totalOpeningBagCount + totalIncomingBagCount - totalNewBags - totalExpenseBagCount
     const usedXiraBagCount = daily
       .filter((record) => record.bagType === 'xira')
       .reduce((sum, record) => sum + record.newBagCount, 0)
     const usedOqBagCount = daily
       .filter((record) => record.bagType === 'oq')
       .reduce((sum, record) => sum + record.newBagCount, 0)
-    const remainingXiraBagCount = totalOpeningXiraBagCount + totalIncomingXiraBagCount - usedXiraBagCount
-    const remainingOqBagCount = totalOpeningOqBagCount + totalIncomingOqBagCount - usedOqBagCount
+    const remainingXiraBagCount = totalOpeningXiraBagCount + totalIncomingXiraBagCount - usedXiraBagCount - expenseXiraBagCount
+    const remainingOqBagCount = totalOpeningOqBagCount + totalIncomingOqBagCount - usedOqBagCount - expenseOqBagCount
     const remainingStoneTons = Number((totalIncomingTons - totalUsedStoneTons).toFixed(2))
     const remainingBaggedTons = Number((totalBaggedTons - totalSoldBaggedTons).toFixed(2))
     const remainingBulkTons = 0
@@ -2577,7 +2616,13 @@ export const useFactoryAccounting = () => {
           .filter((record) => record.materialType === 'bag' && record.bagType === 'oq')
           .reduce((sum, record) => sum + record.bagCount, 0)
         const incomingTons = Number((factoryLoads.reduce((sum, record) => sum + record.tons, 0) + openingStoneTons).toFixed(2))
-        const usedStoneTons = Number(factoryDaily.reduce((sum, record) => sum + record.usedStoneTons, 0).toFixed(2))
+        const expenseStoneTons = Number(
+          factoryExpenses
+            .filter((record) => record.materialType === 'stone')
+            .reduce((sum, record) => sum + record.materialQuantity, 0)
+            .toFixed(2)
+        )
+        const usedStoneTons = Number((factoryDaily.reduce((sum, record) => sum + record.usedStoneTons, 0) + expenseStoneTons).toFixed(2))
         const outputTons = Number((factoryDaily.reduce((sum, record) => sum + getOutputTons(record), 0) + openingProductTons).toFixed(2))
         const baggedOutputTons = Number((factoryDaily.reduce((sum, record) => sum + record.baggedOutputTons, 0) + openingProductTons).toFixed(2))
         const bulkOutputTons = 0
@@ -2614,15 +2659,21 @@ export const useFactoryAccounting = () => {
         const remainingKraskaTons = Number((producedKraskaTons - factorySoldKraskaTons).toFixed(2))
         const remainingMelTons = Number((producedMelTons - factorySoldMelTons).toFixed(2))
         const usedBagCount = factoryDaily.reduce((sum, record) => sum + record.newBagCount, 0)
-        const remainingBagCount = openingBagCount + incomingBagCount - usedBagCount
+        const expenseXiraBagCount = factoryExpenses
+          .filter((record) => record.materialType === 'bag' && record.bagType === 'xira')
+          .reduce((sum, record) => sum + Math.round(record.materialQuantity), 0)
+        const expenseOqBagCount = factoryExpenses
+          .filter((record) => record.materialType === 'bag' && record.bagType === 'oq')
+          .reduce((sum, record) => sum + Math.round(record.materialQuantity), 0)
+        const remainingBagCount = openingBagCount + incomingBagCount - usedBagCount - expenseXiraBagCount - expenseOqBagCount
         const usedXiraBagCount = factoryDaily
           .filter((record) => record.bagType === 'xira')
           .reduce((sum, record) => sum + record.newBagCount, 0)
         const usedOqBagCount = factoryDaily
           .filter((record) => record.bagType === 'oq')
           .reduce((sum, record) => sum + record.newBagCount, 0)
-        const remainingXiraBagCount = openingXiraBagCount + incomingXiraBagCount - usedXiraBagCount
-        const remainingOqBagCount = openingOqBagCount + incomingOqBagCount - usedOqBagCount
+        const remainingXiraBagCount = openingXiraBagCount + incomingXiraBagCount - usedXiraBagCount - expenseXiraBagCount
+        const remainingOqBagCount = openingOqBagCount + incomingOqBagCount - usedOqBagCount - expenseOqBagCount
 
         return {
           factory: factoryName,
@@ -2714,6 +2765,7 @@ export const useFactoryAccounting = () => {
       totalIncomingXiraBagCount,
       totalIncomingOqBagCount,
       totalUsedStoneTons,
+      totalExpenseStoneTons,
       totalOutputTons,
       totalBaggedTons,
       totalBulkTons,
@@ -2721,6 +2773,7 @@ export const useFactoryAccounting = () => {
       totalSoldBulkTons,
       totalNewBags,
       totalOldBags,
+      totalExpenseBagCount,
       remainingBagCount,
       remainingXiraBagCount,
       remainingOqBagCount,

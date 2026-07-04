@@ -63,6 +63,10 @@ const expenseCategories: ExpenseCategory[] = [
   'Svet',
   'Qo‘shimcha xarajat',
   'Yuklash',
+  'Tosh',
+  'Xira qop',
+  'Oq qop',
+  'Zavod qarzi',
   'Soliq',
   'Boshqa'
 ]
@@ -370,15 +374,21 @@ const normalizeContactRecord = (record: unknown): ContactRecord => {
 
 const normalizeExpenseRecord = (record: unknown): OperationalExpense => {
   const source = typeof record === 'object' && record ? (record as Partial<OperationalExpense>) : {}
+  const category = normalizeExpenseCategory(source.category)
+  const materialType = category === 'Tosh' ? 'stone' : category === 'Xira qop' || category === 'Oq qop' ? 'bag' : ''
+  const bagType = category === 'Oq qop' ? 'oq' : category === 'Xira qop' ? 'xira' : ''
 
   return {
     id: asString(source.id, createId('exp')),
     date: asString(source.date, todayIso()),
     factory: isFactory(source.factory) ? source.factory : '',
-    category: normalizeExpenseCategory(source.category),
+    category,
     description: asString(source.description),
     amount: asNumber(source.amount),
     paymentMethod: isPaymentMethod(source.paymentMethod) ? source.paymentMethod : 'Naqd',
+    materialType,
+    bagType,
+    materialQuantity: materialType ? asNumber(source.materialQuantity) : 0,
     notes: asString(source.notes)
   }
 }

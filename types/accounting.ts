@@ -15,6 +15,10 @@ export type ExpenseCategory =
   | 'Svet'
   | 'Qo‘shimcha xarajat'
   | 'Yuklash'
+  | 'Tosh'
+  | 'Xira qop'
+  | 'Oq qop'
+  | 'Zavod qarzi'
   | 'Soliq'
   | 'Boshqa'
 export type PaymentMethod = 'Naqd' | 'Click' | 'Prichesleniya'
@@ -176,6 +180,9 @@ export interface OperationalExpense {
   description: string
   amount: number
   paymentMethod: PaymentMethod
+  materialType: SupplyMaterialType | ''
+  bagType: BagType | ''
+  materialQuantity: number
   notes: string
 }
 

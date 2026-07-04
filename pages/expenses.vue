@@ -32,6 +32,9 @@ const createExpenseFormState = (): Omit<OperationalExpense, 'id'> => ({
   description: '',
   amount: 0,
   paymentMethod: 'Naqd',
+  materialType: '',
+  bagType: '',
+  materialQuantity: 0,
   notes: ''
 })
 
@@ -104,11 +107,32 @@ const workerPayoutModeLabel = computed(() => {
   return ''
 })
 
+const isMaterialExpense = computed(() =>
+  expenseForm.category === 'Tosh' || expenseForm.category === 'Xira qop' || expenseForm.category === 'Oq qop'
+)
+
+const materialExpenseLabel = computed(() => {
+  if (expenseForm.category === 'Tosh') {
+    return 'Tosh miqdori (t)'
+  }
+
+  if (expenseForm.category === 'Xira qop') {
+    return 'Xira qop soni (dona)'
+  }
+
+  if (expenseForm.category === 'Oq qop') {
+    return 'Oq qop soni (dona)'
+  }
+
+  return 'Miqdor'
+})
+
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
   { key: 'factory', label: 'Zavod' },
   { key: 'category', label: 'Kategoriya' },
   { key: 'description', label: 'Tavsif' },
+  { key: 'materialQuantity', label: 'Miqdor', align: 'right' },
   { key: 'paymentMethod', label: 'To`lov turi' },
   { key: 'amount', label: 'Summa', align: 'right' },
   { key: 'actions', label: 'Amal', align: 'right' }
@@ -187,6 +211,9 @@ const openEditModal = (row: Record<string, unknown>) => {
     description: record.description,
     amount: record.amount,
     paymentMethod: record.paymentMethod,
+    materialType: record.materialType,
+    bagType: record.bagType,
+    materialQuantity: record.materialQuantity,
     notes: record.notes
   })
 
@@ -208,6 +235,9 @@ const saveExpense = () => {
     description: expenseForm.description.trim(),
     amount: Number(expenseForm.amount),
     paymentMethod: expenseForm.paymentMethod as PaymentMethod,
+    materialType: expenseForm.category === 'Tosh' ? 'stone' : expenseForm.category === 'Xira qop' || expenseForm.category === 'Oq qop' ? 'bag' : '',
+    bagType: expenseForm.category === 'Oq qop' ? 'oq' : expenseForm.category === 'Xira qop' ? 'xira' : '',
+    materialQuantity: isMaterialExpense.value ? Number(expenseForm.materialQuantity) : 0,
     notes: expenseForm.notes.trim()
   }
 
@@ -218,6 +248,16 @@ const saveExpense = () => {
 
   if (payload.category === 'Ishchi' && !payload.factory) {
     formError.value = 'Ishchi chiqimi uchun zavodni tanlang.'
+    return
+  }
+
+  if (isMaterialExpense.value && !payload.factory) {
+    formError.value = 'Tosh yoki qop chiqimi uchun zavodni tanlang.'
+    return
+  }
+
+  if (isMaterialExpense.value && payload.materialQuantity <= 0) {
+    formError.value = 'Tosh yoki qop miqdorini kiriting.'
     return
   }
 
@@ -316,6 +356,34 @@ watch(
   },
   { immediate: true }
 )
+
+watch(
+  () => expenseForm.category,
+  (category) => {
+    if (category === 'Tosh') {
+      expenseForm.materialType = 'stone'
+      expenseForm.bagType = ''
+      return
+    }
+
+    if (category === 'Xira qop') {
+      expenseForm.materialType = 'bag'
+      expenseForm.bagType = 'xira'
+      return
+    }
+
+    if (category === 'Oq qop') {
+      expenseForm.materialType = 'bag'
+      expenseForm.bagType = 'oq'
+      return
+    }
+
+    expenseForm.materialType = ''
+    expenseForm.bagType = ''
+    expenseForm.materialQuantity = 0
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -375,6 +443,12 @@ watch(
 
         <template #cell-amount="{ value }">
           {{ formatSom(Number(value)) }}
+        </template>
+
+        <template #cell-materialQuantity="{ row, value }">
+          <span v-if="row.materialType === 'stone'">{{ Number(value).toLocaleString('uz-UZ') }} t</span>
+          <span v-else-if="row.materialType === 'bag'">{{ Math.round(Number(value)).toLocaleString('uz-UZ') }} dona</span>
+          <span v-else>-</span>
         </template>
 
       <template #cell-actions="{ row }">
@@ -490,6 +564,16 @@ watch(
         step="0.01"
         label="Summa"
         :invalid="Boolean(formError) && Number(expenseForm.amount) <= 0"
+        required
+      />
+      <AppInput
+        v-if="isMaterialExpense"
+        v-model="expenseForm.materialQuantity"
+        type="number"
+        min="0"
+        :step="expenseForm.category === 'Tosh' ? '0.01' : '1'"
+        :label="materialExpenseLabel"
+        :invalid="Boolean(formError) && isMaterialExpense && Number(expenseForm.materialQuantity) <= 0"
         required
       />
       <div class="md:col-span-2">
