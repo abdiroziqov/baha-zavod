@@ -34,6 +34,7 @@ import type {
   ScaleSyncMeta,
   SaleRecord,
   ShipmentType,
+  SupplierPaymentRecord,
   SupplyMaterialType,
   VehicleType
 } from '~/types/accounting'
@@ -251,6 +252,20 @@ const normalizeIncomingLoad = (record: unknown): IncomingLoadRecord => {
     paidAmount,
     remainingAmount,
     paymentStatus: getPaymentStatus(totalAmount, paidAmount),
+    notes: asString(source.notes)
+  }
+}
+
+const normalizeSupplierPaymentRecord = (record: unknown): SupplierPaymentRecord => {
+  const source = typeof record === 'object' && record ? (record as Partial<SupplierPaymentRecord>) : {}
+
+  return {
+    id: asString(source.id, createId('supplier-pay')),
+    date: asString(source.date, todayIso()),
+    factory: isFactory(source.factory) ? source.factory : '',
+    supplierName: asString(source.supplierName),
+    amount: asNumber(source.amount),
+    paymentMethod: isPaymentMethod(source.paymentMethod) ? source.paymentMethod : 'Naqd',
     notes: asString(source.notes)
   }
 }
@@ -531,6 +546,7 @@ const buildSeedState = (): AccountingStateSnapshot => ({
   openingBalances: [],
   dailyRecords: (dailySource as unknown[]).map((record) => normalizeDailyRecord(record, defaultCostProfile)),
   incomingLoads: (loadsSource as unknown[]).map((record) => normalizeIncomingLoad(record)),
+  supplierPayments: [],
   scaleEntries: (scaleEntriesSource as unknown[]).map((record) => normalizeScaleEntry(record)),
   scaleSyncMeta: normalizeScaleSyncMeta({}),
   scaleCashEntries: (scaleCashEntriesSource as unknown[]).map((record) => normalizeScaleCashEntry(record)),
@@ -560,6 +576,9 @@ export const normalizeAccountingState = (snapshot: unknown): AccountingStateSnap
       : [],
     incomingLoads: Array.isArray(source.incomingLoads)
       ? source.incomingLoads.map((record) => normalizeIncomingLoad(record))
+      : [],
+    supplierPayments: Array.isArray(source.supplierPayments)
+      ? source.supplierPayments.map((record) => normalizeSupplierPaymentRecord(record))
       : [],
     scaleEntries: Array.isArray(source.scaleEntries) ? source.scaleEntries.map((record) => normalizeScaleEntry(record)) : [],
     scaleSyncMeta: normalizeScaleSyncMeta(source.scaleSyncMeta),

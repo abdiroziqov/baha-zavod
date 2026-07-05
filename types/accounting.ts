@@ -214,6 +214,16 @@ export interface SupplierSummary {
   lastFactory: FactoryName | ''
 }
 
+export interface SupplierPaymentRecord {
+  id: string
+  date: string
+  factory: FactoryName | ''
+  supplierName: string
+  amount: number
+  paymentMethod: PaymentMethod
+  notes: string
+}
+
 export interface ScaleEntry {
   id: string
   date: string
@@ -312,6 +322,7 @@ export interface AccountingStateSnapshot {
   openingBalances: OpeningBalanceRecord[]
   dailyRecords: DailyFactoryRecord[]
   incomingLoads: IncomingLoadRecord[]
+  supplierPayments: SupplierPaymentRecord[]
   scaleEntries: ScaleEntry[]
   scaleSyncMeta: ScaleSyncMeta
   scaleCashEntries: ScaleCashEntry[]

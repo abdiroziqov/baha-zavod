@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BagType, BalanceType, ContactRecord, FactoryName, IncomingLoadRecord, PaymentStatus, SupplyMaterialType, VehicleType } from '~/types/accounting'
+import type { BagType, BalanceType, ContactRecord, FactoryName, IncomingLoadRecord, PaymentMethod, PaymentStatus, SupplierPaymentRecord, SupplyMaterialType, VehicleType } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
 
 definePageMeta({
@@ -27,18 +27,30 @@ type SupplierFormState = {
   notes: string
 }
 
+type SupplierPaymentFormState = {
+  date: string
+  factory: FactoryName | ''
+  supplierName: string
+  amount: number
+  paymentMethod: PaymentMethod
+  notes: string
+}
+
 const {
   incomingLoads,
+  supplierPayments,
   factoryOptions,
   supplierContacts,
   supplierSummaries,
+  paymentMethods,
   latestDate,
   addContact,
   updateContact,
   removeContact,
   addIncomingLoad,
   updateIncomingLoad,
-  removeIncomingLoad
+  removeIncomingLoad,
+  addSupplierPayment
 } = useFactoryAccounting()
 const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
@@ -89,6 +101,16 @@ const supplierError = ref('')
 const supplierForm = reactive<SupplierFormState>({
   name: '',
   phone: '',
+  notes: ''
+})
+const supplierPaymentModalOpen = ref(false)
+const supplierPaymentError = ref('')
+const supplierPaymentForm = reactive<SupplierPaymentFormState>({
+  date: latestDate.value,
+  factory: '',
+  supplierName: '',
+  amount: 0,
+  paymentMethod: 'Naqd',
   notes: ''
 })
 
@@ -172,10 +194,21 @@ const loadSummary = computed(() => {
   const totalTons = filteredLoads.value.reduce((sum, record) => sum + record.tons, 0)
   const totalBags = filteredLoads.value.reduce((sum, record) => sum + record.bagCount, 0)
   const totalAmount = filteredLoads.value.reduce((sum, record) => sum + record.totalAmount, 0)
-  const totalPaid = filteredLoads.value.reduce((sum, record) => sum + record.paidAmount, 0)
+  const filteredSupplierPayments = supplierPayments.value.filter((record) => {
+    if (filters.startDate && record.date < filters.startDate) return false
+    if (filters.endDate && record.date > filters.endDate) return false
+    if (filters.factory && record.factory !== filters.factory) return false
+    if (filters.supplier && !record.supplierName.toLowerCase().includes(filters.supplier.trim().toLowerCase())) return false
+    return true
+  })
+  const totalPaid = filteredLoads.value.reduce((sum, record) => sum + record.paidAmount, 0) +
+    filteredSupplierPayments.reduce((sum, record) => sum + record.amount, 0)
   const totalDebt = filteredLoads.value.reduce((sum, record) => sum + record.remainingAmount, 0)
   const totalAdvance = filteredLoads.value.reduce(
     (sum, record) => sum + getLoadAdvanceAmount(record.totalAmount, record.paidAmount),
+    0
+  ) + filteredSupplierPayments.reduce(
+    (sum, record) => sum + record.amount,
     0
   )
 
@@ -337,6 +370,56 @@ const openCreateModal = () => {
 
   resetForm()
   modalOpen.value = true
+}
+
+const resetSupplierPaymentForm = () => {
+  Object.assign(supplierPaymentForm, {
+    date: latestDate.value,
+    factory: '',
+    supplierName: '',
+    amount: 0,
+    paymentMethod: 'Naqd',
+    notes: ''
+  })
+  supplierPaymentError.value = ''
+}
+
+const openSupplierPaymentModal = () => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  resetSupplierPaymentForm()
+  supplierPaymentModalOpen.value = true
+}
+
+const saveSupplierPayment = () => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  const payload: Omit<SupplierPaymentRecord, 'id'> = {
+    date: supplierPaymentForm.date,
+    factory: supplierPaymentForm.factory,
+    supplierName: supplierPaymentForm.supplierName.trim(),
+    amount: Number(supplierPaymentForm.amount),
+    paymentMethod: supplierPaymentForm.paymentMethod,
+    notes: supplierPaymentForm.notes.trim()
+  }
+
+  if (!payload.date || !payload.supplierName) {
+    supplierPaymentError.value = 'Sana va ta`minotchini kiriting.'
+    return
+  }
+
+  if (payload.amount <= 0) {
+    supplierPaymentError.value = 'Summa 0 dan katta bo`lishi kerak.'
+    return
+  }
+
+  addSupplierPayment(payload)
+  supplierPaymentModalOpen.value = false
+  resetSupplierPaymentForm()
 }
 
 const openEditModal = (row: Record<string, unknown>) => {
@@ -572,6 +655,7 @@ const clearFilters = () => {
     <div class="flex flex-wrap gap-2">
       <ExportActions @excel="exportFilteredLoadsExcel" @pdf="exportFilteredLoadsPdf" />
       <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">{{ t("Kirim qo'shish") }}</button>
+      <button v-if="isAdmin" type="button" class="btn-secondary" @click="openSupplierPaymentModal">{{ t("Chiqim qo'shish") }}</button>
     </div>
   </section>
 
@@ -842,6 +926,50 @@ const clearFilters = () => {
         <button type="button" class="btn-primary" @click="saveLoad">
           {{ editingId ? t('Saqlash') : t("Qo`shish") }}
         </button>
+      </div>
+    </template>
+  </AppModal>
+
+  <AppModal :open="supplierPaymentModalOpen" title="Ta`minotchiga chiqim qo`shish" size="lg" @close="supplierPaymentModalOpen = false">
+    <div class="grid gap-4 md:grid-cols-2">
+      <AppInput v-model="supplierPaymentForm.date" type="date" label="Sana" :invalid="Boolean(supplierPaymentError) && !supplierPaymentForm.date" required />
+      <AppSelect v-model="supplierPaymentForm.factory" label="Zavod" :options="factoryOptions" placeholder="Ixtiyoriy" />
+      <AppSelect
+        v-model="supplierPaymentForm.supplierName"
+        label="Ta'minotchi"
+        :options="supplierSelectOptions"
+        :translate-options="false"
+        :searchable="true"
+        placeholder="Ta'minotchi nomi"
+        :invalid="Boolean(supplierPaymentError) && !supplierPaymentForm.supplierName.trim()"
+        required
+      />
+      <AppSelect
+        v-model="supplierPaymentForm.paymentMethod"
+        label="To`lov turi"
+        :options="paymentMethods.map((item) => ({ label: item, value: item }))"
+        required
+      />
+      <AppInput
+        v-model="supplierPaymentForm.amount"
+        type="number"
+        min="0"
+        step="0.01"
+        label="Summa"
+        :invalid="Boolean(supplierPaymentError) && Number(supplierPaymentForm.amount) <= 0"
+        required
+      />
+      <AppInput v-model="supplierPaymentForm.notes" label="Izoh" placeholder="Masalan, qarzdan to'landi" />
+    </div>
+
+    <p v-if="supplierPaymentError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+      {{ supplierPaymentError }}
+    </p>
+
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn-secondary" @click="supplierPaymentModalOpen = false">{{ t('Bekor qilish') }}</button>
+        <button type="button" class="btn-primary" @click="saveSupplierPayment">{{ t("Qo`shish") }}</button>
       </div>
     </template>
   </AppModal>

@@ -8,6 +8,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       openingBalances,
       dailyRecords,
       incomingLoads,
+      supplierPayments,
       scaleEntries,
       scaleSyncMeta,
       scaleCashEntries,
@@ -33,6 +34,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       openingBalances: openingBalances.value,
       dailyRecords: dailyRecords.value,
       incomingLoads: incomingLoads.value,
+      supplierPayments: supplierPayments.value,
       scaleEntries: scaleEntries.value,
       scaleSyncMeta: scaleSyncMeta.value,
       scaleCashEntries: scaleCashEntries.value,
@@ -59,6 +61,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       openingBalances.value = snapshot.openingBalances ?? []
       dailyRecords.value = snapshot.dailyRecords
       incomingLoads.value = snapshot.incomingLoads
+      supplierPayments.value = snapshot.supplierPayments ?? []
       scaleEntries.value = snapshot.scaleEntries
       scaleSyncMeta.value = snapshot.scaleSyncMeta
       scaleCashEntries.value = snapshot.scaleCashEntries
@@ -79,6 +82,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         snapshot.openingBalances.length ||
           snapshot.dailyRecords.length ||
           snapshot.incomingLoads.length ||
+          snapshot.supplierPayments.length ||
           snapshot.scaleEntries.length ||
           snapshot.scaleCashEntries.length ||
           snapshot.sales.length ||
@@ -99,6 +103,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           openingBalances: JSON.parse(window.localStorage.getItem(`${storagePrefix}opening-balances`) || '[]'),
           dailyRecords: JSON.parse(window.localStorage.getItem(`${storagePrefix}daily-records`) || '[]'),
           incomingLoads: JSON.parse(window.localStorage.getItem(`${storagePrefix}incoming-loads`) || '[]'),
+          supplierPayments: JSON.parse(window.localStorage.getItem(`${storagePrefix}supplier-payments`) || '[]'),
           scaleEntries: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-entries`) || '[]'),
           scaleSyncMeta: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-sync-meta`) || 'null'),
           scaleCashEntries: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-cash-entries`) || '[]'),
@@ -131,6 +136,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         window.localStorage.setItem(`${storagePrefix}opening-balances`, JSON.stringify(snapshot.openingBalances))
         window.localStorage.setItem(`${storagePrefix}daily-records`, JSON.stringify(snapshot.dailyRecords))
         window.localStorage.setItem(`${storagePrefix}incoming-loads`, JSON.stringify(snapshot.incomingLoads))
+        window.localStorage.setItem(`${storagePrefix}supplier-payments`, JSON.stringify(snapshot.supplierPayments))
         window.localStorage.setItem(`${storagePrefix}scale-entries`, JSON.stringify(snapshot.scaleEntries))
         window.localStorage.setItem(`${storagePrefix}scale-sync-meta`, JSON.stringify(snapshot.scaleSyncMeta))
         window.localStorage.setItem(`${storagePrefix}scale-cash-entries`, JSON.stringify(snapshot.scaleCashEntries))

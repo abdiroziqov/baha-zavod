@@ -31,6 +31,7 @@ const navigationItems: NavigationItem[] = [
   { label: 'Sotuvlar', to: '/sales', icon: 'sales', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Klientlar', to: '/clients', icon: 'clients', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Qarzdorlar', to: '/debtors', icon: 'debtors', roles: ['admin', 'manager', 'operator'], group: 'main' },
+  { label: 'Zavod qarzi', to: '/factory-debts', icon: 'debtors', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Chiqimlar', to: '/expenses', icon: 'expenses', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Hisobotlar', to: '/reports', icon: 'reports', roles: ['admin', 'manager', 'operator'], group: 'main' }
 ]

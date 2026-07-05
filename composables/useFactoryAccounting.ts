@@ -44,6 +44,7 @@ import type {
   ShipmentType,
   SupplyMaterialType,
   SupplierSummary,
+  SupplierPaymentRecord,
   VehicleType
 } from '~/types/accounting'
 import type { ChartPoint } from '~/types/report'
@@ -429,6 +430,16 @@ const normalizeIncomingLoadRecord = (
   }
 }
 
+const normalizeSupplierPaymentRecord = (record: Partial<SupplierPaymentRecord>): SupplierPaymentRecord => ({
+  id: record.id ?? createId('supplier-pay'),
+  date: record.date ?? new Date().toISOString().slice(0, 10),
+  factory: factories.includes(record.factory as FactoryName) ? (record.factory as FactoryName) : '',
+  supplierName: record.supplierName?.trim() ?? '',
+  amount: Number(Math.max(record.amount ?? 0, 0).toFixed(2)),
+  paymentMethod: paymentMethods.includes(record.paymentMethod as PaymentMethod) ? (record.paymentMethod as PaymentMethod) : 'Naqd',
+  notes: record.notes?.trim() ?? ''
+})
+
 const normalizeContactRecord = (record: Partial<ContactRecord>): ContactRecord => ({
   id: record.id ?? createId('contact'),
   type: record.type ?? 'client',
@@ -620,6 +631,10 @@ export const useFactoryAccounting = () => {
     'accounting:incoming-loads',
     () => clone(seedIncomingLoads).map((record) => normalizeIncomingLoadRecord(record, Number(record.pricePerTon ?? 0), record.paidAmount))
   )
+  const supplierPayments = useState<SupplierPaymentRecord[]>(
+    'accounting:supplier-payments',
+    () => []
+  )
   const scaleEntries = useState<ScaleEntry[]>(
     'accounting:scale-entries',
     () => clone(seedScaleEntries).map((record) => normalizeScaleEntryRecord(record))
@@ -670,6 +685,7 @@ export const useFactoryAccounting = () => {
       ...openingBalances.value.map((record) => record.date),
       ...dailyRecords.value.map((record) => record.date),
       ...incomingLoads.value.map((record) => record.date),
+      ...supplierPayments.value.map((record) => record.date),
       ...manualDebts.value.map((record) => record.date),
       ...payments.value.map((record) => record.date),
       ...barterRecords.value.map((record) => record.date),
@@ -698,6 +714,7 @@ export const useFactoryAccounting = () => {
         ...openingBalances.value.map((record) => record.date),
         ...dailyRecords.value.map((record) => record.date),
         ...incomingLoads.value.map((record) => record.date),
+        ...supplierPayments.value.map((record) => record.date),
         ...manualDebts.value.map((record) => record.date),
         ...payments.value.map((record) => record.date),
         ...barterRecords.value.map((record) => record.date),
@@ -1022,6 +1039,7 @@ export const useFactoryAccounting = () => {
     const supplierNames = new Set([
       ...supplierContacts.value.map((contact) => contact.name),
       ...incomingLoads.value.map((load) => load.supplier),
+      ...supplierPayments.value.map((record) => record.supplierName),
       ...barterRecords.value.map((record) => record.supplierName)
     ])
 
@@ -1129,6 +1147,48 @@ export const useFactoryAccounting = () => {
       }
 
       summaryMap.set(barter.supplierName, current)
+    })
+
+    supplierPayments.value.forEach((payment) => {
+      const current = summaryMap.get(payment.supplierName) ?? {
+        supplierName: payment.supplierName,
+        totalTons: 0,
+        totalBagCount: 0,
+        totalAmount: 0,
+        totalPaid: 0,
+        totalDebt: 0,
+        totalAdvance: 0,
+        totalBarter: 0,
+        balanceType: 'yopilgan' as const,
+        balanceAmount: 0,
+        averagePricePerTon: 0,
+        loadCount: 0,
+        lastLoadDate: payment.date,
+        lastFactory: payment.factory
+      }
+
+      current.totalPaid += payment.amount
+      current.totalAdvance += payment.amount
+
+      if (!current.lastLoadDate || payment.date >= current.lastLoadDate) {
+        current.lastLoadDate = payment.date
+        current.lastFactory = payment.factory
+      }
+
+      const netBalance = Number((current.totalAdvance + current.totalBarter - current.totalDebt).toFixed(2))
+
+      if (netBalance > 0) {
+        current.balanceType = 'bizga_qarz'
+        current.balanceAmount = netBalance
+      } else if (netBalance < 0) {
+        current.balanceType = 'bizdan_qarz'
+        current.balanceAmount = Math.abs(netBalance)
+      } else {
+        current.balanceType = 'yopilgan'
+        current.balanceAmount = 0
+      }
+
+      summaryMap.set(payment.supplierName, current)
     })
 
     return Array.from(summaryMap.values()).sort((left, right) => {
@@ -1769,6 +1829,27 @@ export const useFactoryAccounting = () => {
     }
   }
 
+  const addSupplierPayment = (payload: Omit<SupplierPaymentRecord, 'id'>) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    ensureSupplierContact(payload.supplierName)
+    const record = normalizeSupplierPaymentRecord({
+      id: createId('supplier-pay'),
+      ...payload
+    })
+    supplierPayments.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: "Ta'minotchilar",
+      entityType: 'supplier-payment',
+      recordId: record.id,
+      summary: `${record.supplierName} uchun ${formatSomValue(record.amount)} chiqim qo'shildi`,
+      after: record
+    })
+  }
+
   const addCashEntry = (payload: Omit<ScaleCashEntry, 'id' | 'source' | 'createdAt'>) => {
     if (!guardAdminMutation()) {
       return
@@ -2196,6 +2277,7 @@ export const useFactoryAccounting = () => {
       ...openingBalances.value.map((record) => record.date),
       ...dailyRecords.value.map((record) => record.date),
       ...incomingLoads.value.map((record) => record.date),
+      ...supplierPayments.value.map((record) => record.date),
       ...sales.value.map((record) => record.date),
       ...manualDebts.value.map((record) => record.date),
       ...payments.value.map((record) => record.date),
@@ -2268,6 +2350,7 @@ export const useFactoryAccounting = () => {
       openingBalances: openingBalances.value.length,
       dailyRecords: dailyRecords.value.length,
       incomingLoads: incomingLoads.value.length,
+      supplierPayments: supplierPayments.value.length,
       sales: sales.value.length,
       payments: payments.value.length,
       manualDebts: manualDebts.value.length,
@@ -2300,6 +2383,7 @@ export const useFactoryAccounting = () => {
     openingBalances.value = preservedOpeningBalances
     dailyRecords.value = []
     incomingLoads.value = preservedSupplierLoads
+    supplierPayments.value = []
     scaleEntries.value = []
     scaleSyncMeta.value = normalizeScaleSyncMeta()
     scaleCashEntries.value = []
@@ -2346,6 +2430,9 @@ export const useFactoryAccounting = () => {
       (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
     )
     const paymentRecords = payments.value.filter(
+      (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
+    )
+    const supplierPaymentRecords = supplierPayments.value.filter(
       (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
     )
     const expenseRecords = expenses.value.filter(
@@ -2576,10 +2663,13 @@ export const useFactoryAccounting = () => {
       const manualOutgoing = cashRecords
         .filter((record) => record.type === 'chiqim' && record.paymentMethod === method)
         .reduce((sum, record) => sum + record.amount, 0)
+      const supplierOutgoing = supplierPaymentRecords
+        .filter((record) => record.paymentMethod === method)
+        .reduce((sum, record) => sum + record.amount, 0)
       const outgoing = roundAmount(
         expenseRecords
           .filter((record) => record.paymentMethod === method)
-          .reduce((sum, record) => sum + record.amount, 0) + manualOutgoing
+          .reduce((sum, record) => sum + record.amount, 0) + manualOutgoing + supplierOutgoing
       )
       const balance = roundAmount(incoming - outgoing)
 
@@ -2752,6 +2842,7 @@ export const useFactoryAccounting = () => {
       salesRecords,
       expenseRecords,
       cashRecords,
+      supplierPaymentRecords,
       totalIncomingTons,
       totalIncomingAmount,
       totalOpeningStoneTons,
@@ -2843,6 +2934,7 @@ export const useFactoryAccounting = () => {
     dailyRecords,
     barterRecords,
     incomingLoads,
+    supplierPayments,
     scaleEntries,
     scaleSyncMeta,
     scaleCashEntries,
@@ -2893,6 +2985,7 @@ export const useFactoryAccounting = () => {
     addIncomingLoad,
     updateIncomingLoad,
     removeIncomingLoad,
+    addSupplierPayment,
     addCashEntry,
     updateCashEntry,
     removeCashEntry,
